@@ -1,0 +1,16 @@
+{
+  "name": "@bisicab/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BisiCab paylaşılan iş mantığı: tipler, coğrafi hesaplama, Kalman filtresi ve ücret motoru",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

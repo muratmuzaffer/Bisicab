@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "BisiCab",
+    "slug": "bisicab",
+    "scheme": "bisicab",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0EA5E9",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tr.gov.izmir.izulas.bisicab",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Yolculuk mesafesini hesaplamak için konumunuz kullanılır.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Yolculuk sırasında mesafe takibi için konum gereklidir.",
+        "NSCameraUsageDescription": "Ödeme fişinin fotoğrafını çekmek için kamera kullanılır.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "tr.gov.izmir.izulas.bisicab",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Yolculuk sırasında mesafe takibi için konum gereklidir."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ödeme fişinin fotoğrafını çekmek için kamera kullanılır."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "SET_YOUR_MAPBOX_DOWNLOAD_TOKEN"
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "mapboxAccessToken": ""
+    }
+  }
+}

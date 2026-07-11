@@ -1,0 +1,12 @@
+# Admin deploy — mobil native dosyaları hariç tut
+apps/mobile
+supabase
+scripts
+.git
+**/.gradle
+**/.cxx
+**/android/app/build
+**/*.apk
+**/*.aab
+coverage
+*.log

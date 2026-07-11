@@ -190,6 +190,12 @@ export default function TripScreen() {
       duration_seconds: tracker.durationSeconds,
       amount: tracker.fare.total,
       updated_at: new Date().toISOString(),
+      current_lat: tracker.currentPoint?.lat ?? null,
+      current_lng: tracker.currentPoint?.lng ?? null,
+      start_lat: tracker.startPoint?.lat ?? null,
+      start_lng: tracker.startPoint?.lng ?? null,
+      speed_kmh: tracker.speedKmh,
+      path: trimPath(tracker.path, 150),
     };
     publisherRef.current?.publish(live);
 

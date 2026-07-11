@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server';
+import { isDriverUser, pickJoinedUser } from '@/lib/supabase-join';
 import { LiveMap, type ActiveDriver } from '@/components/live-map';
 
 export const dynamic = 'force-dynamic';
@@ -13,9 +14,16 @@ export default async function LivePage() {
     )
     .eq('status', 'in_use');
 
-  const activeVehicles = (vehicles ?? []).filter(
-    (v: { users?: { role?: string } | null; current_driver_id: string | null }) =>
-      v.current_driver_id && v.users?.role === 'driver'
+  type VehicleRow = {
+    plate: string;
+    current_driver_id: string | null;
+    users: Parameters<typeof pickJoinedUser>[0];
+  };
+
+  const rows = (vehicles ?? []) as VehicleRow[];
+
+  const activeVehicles = rows.filter(
+    (v) => v.current_driver_id && isDriverUser(v.users)
   );
 
   const driverIds = activeVehicles
@@ -38,25 +46,20 @@ export default async function LivePage() {
     );
   }
 
-  const drivers: ActiveDriver[] = activeVehicles.map(
-    (v: {
-      plate: string;
-      current_driver_id: string | null;
-      users?: { full_name?: string | null; email?: string | null } | null;
-    }) => {
+  const drivers: ActiveDriver[] = activeVehicles.map((v) => {
+      const user = pickJoinedUser(v.users);
       const loc = v.current_driver_id
         ? locByDriver.get(v.current_driver_id)
         : undefined;
       return {
         user_id: v.current_driver_id ?? v.plate,
-        full_name: v.users?.full_name ?? null,
-        driver_email: v.users?.email ?? null,
+        full_name: user?.full_name ?? null,
+        driver_email: user?.email ?? null,
         plate: v.plate,
         current_lat: loc?.lat ?? null,
         current_lng: loc?.lng ?? null,
       };
-    }
-  );
+    });
 
   const onMap = drivers.filter(
     (d) => d.current_lat != null && d.current_lng != null

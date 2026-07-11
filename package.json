@@ -10,6 +10,7 @@
   "scripts": {
     "mobile": "npm run start --workspace @bisicab/mobile",
     "admin": "npm run dev --workspace @bisicab/admin",
+    "build:admin": "npm run build --workspace @bisicab/admin",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "build:shared": "npm run build --workspace @bisicab/shared",

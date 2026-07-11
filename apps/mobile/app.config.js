@@ -8,7 +8,7 @@ module.exports = {
   name: 'BisiCab',
   slug: 'bisicab',
   scheme: 'bisicab',
-  version: '0.2.2',
+  version: '0.3.1',
   orientation: 'default',
   userInterfaceStyle: 'automatic',
   icon: './assets/icon.png',
@@ -34,6 +34,7 @@ module.exports = {
   },
   android: {
     package: 'tr.gov.izmir.izulas.bisicab',
+    versionCode: 31,
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#F5F5F5',
@@ -49,6 +50,7 @@ module.exports = {
   },
   plugins: [
     'expo-router',
+    'expo-screen-orientation',
     [
       'expo-location',
       {

@@ -1,8 +1,8 @@
 {
   "name": "@bisicab/mobile",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "scripts": {
     "start": "expo start --dev-client",
     "start:go": "expo start",
@@ -11,7 +11,9 @@
     "prebuild": "expo prebuild",
     "build:dev:android": "eas build --profile development --platform android",
     "build:dev:ios": "eas build --profile development --platform ios",
-    "build:preview:android": "eas build --profile preview --platform android",
+    "build:preview:android": "node ./scripts/build-android-apk.mjs",
+    "build:apk": "node ./scripts/build-android-apk.mjs",
+    "build:preview:android:cloud": "eas build --profile preview --platform android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit"
   },
@@ -28,6 +30,7 @@
     "expo-linking": "~7.0.0",
     "expo-location": "~18.0.0",
     "expo-router": "~4.0.0",
+    "expo-screen-orientation": "~8.0.4",
     "expo-status-bar": "~2.0.0",
     "expo-task-manager": "~12.0.5",
     "nativewind": "4.1.23",

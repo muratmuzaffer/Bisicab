@@ -117,4 +117,14 @@ export interface LiveTripState {
   duration_seconds: number;
   amount: number;
   updated_at: string;
+  /** Anlık konum (harita). */
+  current_lat?: number | null;
+  current_lng?: number | null;
+  /** Başlangıç konumu (harita işareti). */
+  start_lat?: number | null;
+  start_lng?: number | null;
+  /** Anlık hız (km/s). */
+  speed_kmh?: number;
+  /** Sarı rota — son N GPS noktası. */
+  path?: Array<{ lat: number; lng: number }>;
 }

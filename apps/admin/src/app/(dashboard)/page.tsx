@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server';
+import { isDriverUser, pickJoinedRecord, pickJoinedUser } from '@/lib/supabase-join';
 import {
   DashboardClient,
   type ActiveVehicle,
@@ -110,46 +111,35 @@ export default async function DashboardPage() {
   const onShiftRows = activeShiftsRaw ?? [];
 
   const plateByDriverFromVehicles = new Map<string, string>();
-  vehicleRows.forEach(
-    (v: {
-      status: string;
-      plate: string;
-      current_driver_id?: string | null;
-      users?: { role?: string } | null;
-    }) => {
+  vehicleRows.forEach((v) => {
       if (
         v.status === 'in_use' &&
         v.current_driver_id &&
-        v.users?.role === 'driver'
+        isDriverUser(v.users)
       ) {
         plateByDriverFromVehicles.set(v.current_driver_id, v.plate);
       }
-    }
-  );
+    });
 
-  const onShiftDrivers = onShiftRows.map(
-    (s: {
-      driver_id: string;
-      started_at: string;
-      users: { full_name?: string | null; email?: string | null; role?: string };
-      vehicles?: { plate?: string | null } | null;
-    }) => ({
-      name: s.users?.full_name?.trim() || s.users?.email || 'Sürücü',
-      email: s.users?.email ?? '—',
+  const onShiftDrivers = onShiftRows.map((s) => {
+    const user = pickJoinedUser(s.users);
+    const vehicle = pickJoinedRecord(s.vehicles);
+    return {
+      name: user?.full_name?.trim() || user?.email || 'Sürücü',
+      email: user?.email ?? '—',
       started_at: s.started_at,
       plate:
-        s.vehicles?.plate ??
+        vehicle?.plate ??
         plateByDriverFromVehicles.get(s.driver_id) ??
         null,
-    })
-  );
+    };
+  });
 
   const todayRows = tripsToday ?? [];
   const yesterdayRows = tripsYesterday ?? [];
 
   const activeBikes = vehicleRows.filter(
-    (v: { status: string; users?: { role?: string } | null }) =>
-      v.status === 'in_use' && v.users?.role === 'driver'
+    (v) => v.status === 'in_use' && isDriverUser(v.users)
   ).length;
 
   const stats: DashboardStats = {
@@ -178,24 +168,16 @@ export default async function DashboardPage() {
   };
 
   const activeVehicles: ActiveVehicle[] = vehicleRows
-    .filter(
-      (v: {
-        status: string;
-        users?: { role?: string } | null;
-      }) => v.status === 'in_use' && v.users?.role === 'driver'
-    )
-    .map(
-      (v: {
-        plate: string;
-        label: string | null;
-        users?: { full_name?: string | null; email?: string | null } | null;
-      }) => ({
+    .filter((v) => v.status === 'in_use' && isDriverUser(v.users))
+    .map((v) => {
+      const user = pickJoinedUser(v.users);
+      return {
         plate: v.plate,
         label: v.label,
-        driver_name: v.users?.full_name ?? null,
-        driver_email: v.users?.email ?? null,
-      })
-    );
+        driver_name: user?.full_name ?? null,
+        driver_email: user?.email ?? null,
+      };
+    });
 
   const recentTrips: RecentTrip[] = (recentTripsRaw ?? []).map((t: any) => ({
     id: t.id,

@@ -2,21 +2,24 @@
  * BisiCab ücret motoru.
  *
  * İş kuralları (İZULAŞ - Alsancak Limanı / Konak Saat Kulesi hattı):
- *  - Açılış ücreti: 35 TL (her yolculukta sabit alınır).
- *  - Sabit / minimum mesafe ücreti: 2.5 km'ye kadar tüm yolculuklar 150 TL'dir.
- *    Açılış ücreti bu 150 TL'ye DAHİL DEĞİLDİR.
+ *  - Başlangıç / minimum ücret: 2.5 km'ye kadar tüm yolculuklar 150 TL.
+ *    (Açılış ücreti bu tutara dahildir; ayrıca eklenmez.)
  *  - 2.5 km üzeri: 2.5 km'nin üstündeki her km için +45 TL.
  *
  * Örnekler:
- *  - 1.8 km  -> 35 + 150                       = 185.00 TL
- *  - 2.5 km  -> 35 + 150                       = 185.00 TL
- *  - 4.0 km  -> 35 + 150 + (1.5 * 45)          = 252.50 TL
+ *  - 0 km    -> 150.00 TL
+ *  - 1.8 km  -> 150.00 TL
+ *  - 2.5 km  -> 150.00 TL
+ *  - 4.0 km  -> 150 + (1.5 * 45) = 217.50 TL
  */
 
 export const PRICING = {
-  /** Açılış ücreti (TL). */
-  OPENING_FEE: 35,
-  /** 2.5 km'ye kadar sabit ücret (TL). */
+  /**
+   * Ayrı açılış ücreti yok; 150 TL başlangıç ücretine dahildir.
+   * Alan geriye dönük uyumluluk için 0 tutulur.
+   */
+  OPENING_FEE: 0,
+  /** 2.5 km'ye kadar sabit / başlangıç ücreti (TL). */
   FLAT_FEE: 150,
   /** Sabit ücretin kapsadığı mesafe (km). */
   FLAT_DISTANCE_KM: 2.5,
@@ -27,9 +30,9 @@ export const PRICING = {
 } as const;
 
 export interface FareBreakdown {
-  /** Açılış ücreti (TL). */
+  /** Açılış ücreti (TL) — sabit ücrete dahil, ayrı eklenmez. */
   openingFee: number;
-  /** Sabit minimum ücret (TL). */
+  /** Sabit minimum / başlangıç ücreti (TL). */
   flatFee: number;
   /** 2.5 km üzeri mesafe için hesaplanan ek ücret (TL). */
   distanceFee: number;
@@ -63,7 +66,8 @@ export function calculateFare(distanceKm: number): FareBreakdown {
       : 0;
 
   const distanceFee = roundCurrency(chargeableExtraKm * PRICING.PER_KM_FEE);
-  const total = roundCurrency(openingFee + flatFee + distanceFee);
+  // Başlangıç 150 TL; açılış ayrıca eklenmez.
+  const total = roundCurrency(flatFee + distanceFee);
 
   return {
     openingFee,
@@ -75,7 +79,7 @@ export function calculateFare(distanceKm: number): FareBreakdown {
   };
 }
 
-/** Tutarı "185.00 TL" biçiminde okunabilir metne çevirir. */
+/** Tutarı "150.00 TL" biçiminde okunabilir metne çevirir. */
 export function formatFare(amount: number, currency = '₺'): string {
   return `${roundCurrency(amount).toFixed(2)} ${currency}`;
 }

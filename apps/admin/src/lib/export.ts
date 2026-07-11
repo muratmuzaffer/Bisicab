@@ -4,6 +4,10 @@ import autoTable from 'jspdf-autotable';
 
 export interface ExportRow {
   driver: string;
+  plate: string;
+  route: string;
+  passengers: string;
+  tourist: string;
   date: string;
   distanceKm: number;
   durationMin: number;
@@ -14,6 +18,10 @@ export interface ExportRow {
 
 const HEADERS = [
   'Sürücü',
+  'Plaka',
+  'Güzergah',
+  'Yolcular',
+  'Turist',
   'Tarih',
   'Mesafe (km)',
   'Süre (dk)',
@@ -25,6 +33,10 @@ const HEADERS = [
 function toMatrix(rows: ExportRow[]): (string | number)[][] {
   return rows.map((r) => [
     r.driver,
+    r.plate,
+    r.route,
+    r.passengers,
+    r.tourist,
     r.date,
     r.distanceKm,
     r.durationMin,
@@ -47,10 +59,10 @@ export function exportToPdf(rows: ExportRow[], fileName = 'surusler.pdf') {
   doc.text('BisiCab - Surus Denetim Raporu', 14, 15);
   autoTable(doc, {
     startY: 22,
-    head: [HEADERS.slice(0, 6)],
-    body: toMatrix(rows).map((r) => r.slice(0, 6)),
+    head: [HEADERS.slice(0, 9)],
+    body: toMatrix(rows).map((r) => r.slice(0, 9)),
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [14, 165, 233] },
+    headStyles: { fillColor: [11, 15, 12], textColor: [245, 197, 24] },
   });
   doc.save(fileName);
 }

@@ -4,16 +4,20 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@bisicab/shared": ["../../packages/shared/src/index.ts"],
-      "@bisicab/shared/*": ["../../packages/shared/src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@bisicab/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@bisicab/shared/*": [
+        "../../packages/shared/src/*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
     "nativewind-env.d.ts"
   ]
 }

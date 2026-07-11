@@ -12,7 +12,8 @@
     "admin": "npm run dev --workspace @bisicab/admin",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "build:shared": "npm run build --workspace @bisicab/shared"
+    "build:shared": "npm run build --workspace @bisicab/shared",
+    "seed:users": "node scripts/seed-users.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -7,6 +7,8 @@ export async function pushDriverLocation(
   point: LatLng,
   isActive = true
 ): Promise<void> {
+  await supabase.rpc('ensure_driver_profile');
+
   await supabase
     .from('drivers_profiles')
     .update({

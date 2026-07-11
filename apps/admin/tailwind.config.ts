@@ -10,18 +10,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: 'hsl(214.3 31.8% 91.4%)',
-        background: 'hsl(0 0% 100%)',
-        foreground: 'hsl(222.2 47.4% 11.2%)',
-        muted: 'hsl(210 40% 96.1%)',
-        'muted-foreground': 'hsl(215.4 16.3% 46.9%)',
+        border: '#D8DED9',
+        background: '#FFFFFF',
+        foreground: '#0B0F0C',
+        muted: '#EEF1EE',
+        'muted-foreground': '#5C6B61',
         brand: {
-          DEFAULT: '#0EA5E9',
-          dark: '#0369A1',
-          light: '#38BDF8',
+          DEFAULT: '#F5C518',
+          dark: '#0B0F0C',
+          light: '#FFE566',
+          deep: '#D4A017',
         },
-        success: '#16A34A',
-        danger: '#DC2626',
+        surface: '#141A16',
+        canvas: '#F7F8F6',
+        soft: '#E8EDE9',
+        success: '#22C55E',
+        danger: '#EF4444',
       },
       borderRadius: {
         lg: '0.75rem',

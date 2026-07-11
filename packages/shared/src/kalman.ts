@@ -5,9 +5,6 @@
  * (jitter) yumuşatmak için kullanılır. Ölçüm gürültüsü, cihazın raporladığı
  * konum doğruluğuna (accuracy, metre) göre belirlenir; süreç gürültüsü ise
  * aracın gerçek hareketini ne kadar hızlı takip edeceğimizi ayarlar.
- *
- * Uyarlama: her eksen (lat/lng) için tek boyutlu, doğrulukla ölçeklenen
- * skaler varyanslı, yaygın kullanılan "GeoKalmanFilter" tasarımı.
  */
 
 export interface KalmanPoint {
@@ -47,9 +44,10 @@ export class GpsKalmanFilter {
   private lng = 0;
 
   constructor(options: KalmanOptions = {}) {
-    this.processNoise = options.processNoise ?? 1.2;
-    this.defaultAccuracy = options.defaultAccuracy ?? 8;
-    this.minAccuracy = options.minAccuracy ?? 1;
+    // Daha yumuşak takip: dururken zıplamayı azaltır.
+    this.processNoise = options.processNoise ?? 0.8;
+    this.defaultAccuracy = options.defaultAccuracy ?? 10;
+    this.minAccuracy = options.minAccuracy ?? 3;
   }
 
   /** Filtreyi sıfırlar (yeni yolculuk başında çağrılmalı). */
@@ -75,7 +73,6 @@ export class GpsKalmanFilter {
     }
 
     if (this.variance < 0) {
-      // İlk ölçüm: durumu doğrudan başlat.
       this.timestamp = input.timestamp;
       this.lat = input.lat;
       this.lng = input.lng;
@@ -83,14 +80,12 @@ export class GpsKalmanFilter {
       return { lat: this.lat, lng: this.lng };
     }
 
-    // Öngörü (predict): geçen süreye göre belirsizliği artır.
     const dtSeconds = (input.timestamp - this.timestamp) / 1000;
     if (dtSeconds > 0) {
       this.variance += dtSeconds * this.processNoise * this.processNoise;
       this.timestamp = input.timestamp;
     }
 
-    // Güncelleme (update): Kalman kazancı.
     const kalmanGain = this.variance / (this.variance + accuracy * accuracy);
     this.lat += kalmanGain * (input.lat - this.lat);
     this.lng += kalmanGain * (input.lng - this.lng);
@@ -102,5 +97,31 @@ export class GpsKalmanFilter {
   /** Filtrelenmiş anlık konum (başlatılmadıysa null). */
   get current(): KalmanPoint | null {
     return this.initialized ? { lat: this.lat, lng: this.lng } : null;
+  }
+
+  exportState(): {
+    variance: number;
+    timestamp: number;
+    lat: number;
+    lng: number;
+  } {
+    return {
+      variance: this.variance,
+      timestamp: this.timestamp,
+      lat: this.lat,
+      lng: this.lng,
+    };
+  }
+
+  importState(state: {
+    variance: number;
+    timestamp: number;
+    lat: number;
+    lng: number;
+  }): void {
+    this.variance = state.variance;
+    this.timestamp = state.timestamp;
+    this.lat = state.lat;
+    this.lng = state.lng;
   }
 }

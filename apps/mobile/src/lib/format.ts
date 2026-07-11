@@ -15,3 +15,13 @@ export function formatKm(km: number): string {
 export function formatTL(amount: number): string {
   return `${amount.toFixed(2)} ₺`;
 }
+
+/** ISO tarihini yerel saat diliminde kısa gösterir. */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

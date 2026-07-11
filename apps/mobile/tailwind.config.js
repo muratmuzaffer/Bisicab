@@ -6,12 +6,16 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#0EA5E9',
-          dark: '#0369A1',
-          light: '#38BDF8',
+          DEFAULT: '#F5C518',
+          dark: '#0B0F0C',
+          light: '#FFE566',
+          deep: '#D4A017',
         },
-        success: '#16A34A',
-        danger: '#DC2626',
+        surface: '#141A16',
+        canvas: '#F7F8F6',
+        soft: '#E8EDE9',
+        success: '#22C55E',
+        danger: '#EF4444',
       },
     },
   },

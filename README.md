@@ -19,13 +19,12 @@
 
 | Kural | Değer |
 | --- | --- |
-| Açılış ücreti | **35 TL** (her yolculukta) |
-| Sabit ücret (≤ 2.5 km) | **150 TL** (açılış hariç) |
+| Başlangıç / minimum (≤ 2.5 km) | **150 TL** (açılış dahildir) |
 | 2.5 km üzeri her km | **+45 TL** |
 
 ```
-Mesafe ≤ 2.5 km  →  Toplam = 35 + 150                       = 185 TL
-Mesafe > 2.5 km  →  Toplam = 35 + 150 + (Mesafe - 2.5) × 45
+Mesafe ≤ 2.5 km  →  Toplam = 150 TL
+Mesafe > 2.5 km  →  Toplam = 150 + (Mesafe - 2.5) × 45
 ```
 
 Tek kaynak: `packages/shared/src/pricing.ts` (`calculateFare`).
@@ -74,19 +73,56 @@ cp apps/admin/.env.example  apps/admin/.env.local
 ```
 Supabase URL/anon key ve Mapbox token'larını doldurun.
 
-### 4. Çalıştırma
+### 4. Admin panelini çalıştır
 ```bash
-npm run mobile   # Expo (sürücü + yolcu tableti)
-npm run admin    # Next.js admin paneli -> http://localhost:3000
+npm run admin    # http://localhost:3000
 ```
+
+### 5. Mobil: dev build (Mapbox + kamera için gerekli)
+`@rnmapbox/maps`, `expo-camera` ve `expo-location` native modüller içerdiğinden mobil,
+**Expo Go ile değil, bir development build** ile çalışır.
+
+Mapbox'ın **gizli download token'ını** (sk...) ortam değişkeni olarak verin (commit etmeyin):
+
+```bash
+# Windows PowerShell
+$env:MAPBOX_DOWNLOAD_TOKEN="sk...."
+
+# macOS/Linux
+export MAPBOX_DOWNLOAD_TOKEN="sk...."
+```
+
+Yerel derleme (cihaz/emülatör bağlıyken):
+```bash
+cd apps/mobile
+npx expo run:android    # veya: npx expo run:ios
+```
+
+Ya da bulutta EAS ile dev client:
+```bash
+cd apps/mobile
+eas build --profile development --platform android
+npm run start           # expo start --dev-client
+```
+
+> Public Mapbox token'ı (`pk...`) `EXPO_PUBLIC_MAPBOX_TOKEN`, gizli download token'ı
+> (`sk...`) `MAPBOX_DOWNLOAD_TOKEN` olarak ayrı tutulur.
 
 ---
 
 ## Roller ve Akış
 
-- **Sürücü (Öğrenci):** Giriş → Ana ekran (günlük özet + "YOLCULUĞU BAŞLAT") → canlı sürüş (KM/süre/tutar) → "YOLCULUĞU BİTİR" → POS çekimi + fiş fotoğrafı (zorunlu) → "Yolculuğu Tamamla".
+- **Sürücü (Öğrenci):** Giriş → Ana ekran (günlük özet + "YOLCULUĞU BAŞLAT") → canlı sürüş (Mapbox harita + rota çizimi, KM/süre/tutar/hız) → "YOLCULUĞU BİTİR" → POS çekimi + fiş fotoğrafı (zorunlu) → "Yolculuğu Tamamla".
 - **Yolcu Tableti:** `/(passenger)/tablet` — sürücüye eşlenir, Realtime broadcast ile canlı KM/süre/tutar gösterir.
-- **Admin:** Dashboard (aktif bisiklet, günlük ciro/km), Canlı Takip (Mapbox harita), Sürüş Denetimi (fiş fotoğraflı tablo + Excel/PDF dışa aktarma).
+- **Admin:** `/login` üzerinden Supabase e-posta/şifre girişi (yalnızca `role = 'admin'` olan hesaplar). Dashboard (aktif bisiklet, günlük ciro/km), Canlı Takip (Mapbox harita), Sürüş Denetimi (fiş fotoğraflı tablo + Excel/PDF dışa aktarma). Rotalar `middleware.ts` ile korunur; admin olmayan/oturumsuz erişim `/login`'e yönlenir.
+
+### Bir kullanıcıyı admin yapma
+1. Supabase → **Authentication → Users → Add user** ile e-posta/şifre oluşturun (trigger otomatik `driver` rolüyle profil açar).
+2. SQL Editor'de rolü admin yapın:
+```sql
+update public.users set role = 'admin' where email = 'admin@izulas.com';
+```
+3. `/login`'den bu hesapla girin.
 
 ---
 

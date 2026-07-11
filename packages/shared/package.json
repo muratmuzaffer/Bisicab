@@ -8,9 +8,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "tsx --test src/__tests__/*.test.ts"
   },
   "devDependencies": {
+    "tsx": "^4.23.0",
     "typescript": "^5.5.4"
   }
 }

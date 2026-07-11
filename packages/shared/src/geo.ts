@@ -42,3 +42,9 @@ export function speedKmh(distanceKm: number, deltaMs: number): number {
   const hours = deltaMs / 3_600_000;
   return distanceKm / hours;
 }
+
+/** Faturalandırma için km — 1 metre hassasiyet (0.001 km). */
+export function roundDistanceKm(distanceKm: number): number {
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0) return 0;
+  return Math.round(distanceKm * 1000) / 1000;
+}

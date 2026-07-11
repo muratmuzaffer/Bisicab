@@ -35,7 +35,7 @@ export default function PassengerTablet() {
           onChangeText={setDriverId}
           autoCapitalize="none"
           placeholder="uuid..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor="#A8B5AD"
           className="mb-6 w-full rounded-xl bg-white/10 px-4 py-3 text-center text-white"
         />
         <Pressable
@@ -43,7 +43,7 @@ export default function PassengerTablet() {
           disabled={!driverId}
           className="rounded-xl bg-brand px-8 py-4"
         >
-          <Text className="text-lg font-bold text-white">Eşleştir</Text>
+          <Text className="text-lg font-bold text-brand-dark">Eşleştir</Text>
         </Pressable>
       </SafeAreaView>
     );

@@ -5,5 +5,5 @@
 @import 'mapbox-gl/dist/mapbox-gl.css';
 
 body {
-  @apply bg-muted text-foreground;
+  @apply bg-canvas text-foreground;
 }

@@ -32,7 +32,7 @@ export function ReceiptCapture({ onCaptured, onCancel }: Props) {
           onPress={requestPermission}
           className="rounded-xl bg-brand px-6 py-3"
         >
-          <Text className="font-bold text-white">İzin Ver</Text>
+          <Text className="font-bold text-brand-dark">İzin Ver</Text>
         </Pressable>
       </View>
     );

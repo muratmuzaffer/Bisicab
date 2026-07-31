@@ -17,9 +17,10 @@ export async function parseBisiCabPdfWithPositions(
   year: number,
   month: number
 ): Promise<ParsedShiftRow[]> {
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const data = new Uint8Array(buffer);
-  const doc = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
+  const doc = await pdfjs.getDocument({ data, useSystemFonts: true, verbosity: 0 }).promise;
 
   const allItems: TextItem[] = [];
 

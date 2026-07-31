@@ -10,7 +10,10 @@
   "scripts": {
     "mobile": "npm run start --workspace @bisicab/mobile",
     "admin": "npm run dev --workspace @bisicab/admin",
+    "shifts": "npm run dev --workspace @bisicab/shifts",
     "build:admin": "npm run build --workspace @bisicab/admin",
+    "build:shifts": "npm run build --workspace @bisicab/shifts",
+    "deploy:shifts": "node apps/shifts/scripts/vercel-deploy.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "build:shared": "npm run build --workspace @bisicab/shared",

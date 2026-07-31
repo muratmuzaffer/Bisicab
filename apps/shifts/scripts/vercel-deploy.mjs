@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const envPath = path.join(repoRoot, 'apps/shifts/.env.local');
+const shiftsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const repoRoot = path.resolve(shiftsRoot, '../..');
+const envPath = path.join(shiftsRoot, '.env.local');
 
 function loadEnv(filePath) {
   return Object.fromEntries(
@@ -36,9 +37,9 @@ for (const key of keys) {
   for (const target of ['production', 'preview', 'development']) {
     const result = spawnSync(
       'npx',
-      ['vercel', 'env', 'add', key, target, '--force', '--yes'],
+      ['vercel', 'env', 'add', key, target, '--force', '--yes', '--project', 'bisicab-shifts'],
       {
-        cwd: path.join(repoRoot, 'apps/shifts'),
+        cwd: repoRoot,
         input: `${env[key]}\n`,
         stdio: ['pipe', 'inherit', 'inherit'],
         shell: true,
@@ -48,10 +49,23 @@ for (const key of keys) {
   }
 }
 
-const deploy = spawnSync('npx', ['vercel', 'deploy', '--prod', '--yes'], {
-  cwd: path.join(repoRoot, 'apps/shifts'),
-  stdio: 'inherit',
-  shell: true,
-});
+const deploy = spawnSync(
+  'npx',
+  [
+    'vercel',
+    'deploy',
+    '--prod',
+    '--yes',
+    '--project',
+    'bisicab-shifts',
+    '--local-config',
+    'apps/shifts/vercel.json',
+  ],
+  {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    shell: true,
+  }
+);
 
 process.exit(deploy.status ?? 1);

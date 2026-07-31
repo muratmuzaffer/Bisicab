@@ -46,10 +46,23 @@ for (const key of keys) {
   }
 }
 
-const deploy = spawnSync('npx', ['vercel', 'deploy', '--prod', '--yes'], {
-  cwd: repoRoot,
-  stdio: 'inherit',
-  shell: true,
-});
+const deploy = spawnSync(
+  'npx',
+  [
+    'vercel',
+    'deploy',
+    '--prod',
+    '--yes',
+    '--project',
+    'bisicab-admin',
+    '--local-config',
+    'apps/admin/vercel.json',
+  ],
+  {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    shell: true,
+  }
+);
 
 process.exit(deploy.status ?? 1);

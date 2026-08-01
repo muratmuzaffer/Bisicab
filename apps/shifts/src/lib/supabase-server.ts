@@ -58,14 +58,11 @@ function isSupabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
-export async function fetchSchedule(year: number, month: number): Promise<ScheduleData | null> {
-  const local = await loadLocalSchedule(year, month);
-  if (local) {
-    return { ...local, entries: dedupeScheduleEntries(local.entries) };
-  }
+function useRemoteStorageFirst(): boolean {
+  return Boolean(process.env.VERCEL);
+}
 
-  if (!isSupabaseConfigured()) return null;
-
+async function fetchScheduleFromSupabase(year: number, month: number): Promise<ScheduleData | null> {
   const supabase = createSupabaseServer();
 
   const { data: monthRow } = await supabase
@@ -91,21 +88,48 @@ export async function fetchSchedule(year: number, month: number): Promise<Schedu
   };
 }
 
+export async function fetchSchedule(year: number, month: number): Promise<ScheduleData | null> {
+  if (useRemoteStorageFirst() && isSupabaseConfigured()) {
+    const remote = await fetchScheduleFromSupabase(year, month);
+    if (remote) return remote;
+  }
+
+  const local = await loadLocalSchedule(year, month);
+  if (local) {
+    return { ...local, entries: dedupeScheduleEntries(local.entries) };
+  }
+
+  if (!useRemoteStorageFirst() && isSupabaseConfigured()) {
+    return fetchScheduleFromSupabase(year, month);
+  }
+
+  return null;
+}
+
 export async function fetchAvailableMonths(): Promise<Array<{ year: number; month: number }>> {
-  const local = await listLocalMonths();
-  if (local.length > 0) return local;
+  const merged = new Map<string, { year: number; month: number }>();
 
-  if (!isSupabaseConfigured()) return [];
+  if (isSupabaseConfigured()) {
+    const supabase = createSupabaseServer();
+    const { data } = await supabase
+      .from('shift_schedule_months')
+      .select('year, month')
+      .eq('published', true)
+      .order('year', { ascending: false })
+      .order('month', { ascending: false });
 
-  const supabase = createSupabaseServer();
-  const { data } = await supabase
-    .from('shift_schedule_months')
-    .select('year, month')
-    .eq('published', true)
-    .order('year', { ascending: false })
-    .order('month', { ascending: false });
+    for (const row of data ?? []) {
+      merged.set(`${row.year}-${row.month}`, row);
+    }
+  }
 
-  return data ?? [];
+  if (!useRemoteStorageFirst()) {
+    for (const row of await listLocalMonths()) {
+      merged.set(`${row.year}-${row.month}`, row);
+    }
+  }
+
+  return Array.from(merged.values()).sort((a, b) => b.year - a.year || b.month - a.month);
 }
 
 export async function fetchAllDriverNames(year: number, month: number): Promise<string[]> {

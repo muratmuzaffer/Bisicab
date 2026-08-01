@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import pdf from 'pdf-parse';
-import { detectMonthYearFromText, parseShiftText } from '@/lib/schedule-data';
+import { parseShiftText } from '@/lib/schedule-data';
 import { isAdminAuthed } from '@/lib/admin-auth';
 import { parseBisiCabPdfWithPositions } from '@/lib/pdf-grid-parser';
 import { dedupeParsedRows } from '@/lib/dedupe';
+import { detectMonthYear } from '@/lib/month-detect';
 
 function isBisiCabVardiyaPdf(text: string): boolean {
   return /BisiCab\s*(Personel\s*)?Vardiya/i.test(text);
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await pdf(buffer);
-    const detected = detectMonthYearFromText(parsed.text);
+    const detected = detectMonthYear(parsed.text, file.name);
     const year = detected?.year ?? formYear ?? new Date().getFullYear();
     const month = detected?.month ?? formMonth ?? new Date().getMonth() + 1;
 
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       year,
       month,
       detectedFromPdf: Boolean(detected),
+      detectedSource: detected?.source ?? null,
       driverCount: new Set(rows.map((r) => r.driverName)).size,
       removedDuplicates: rawRows.length - rows.length,
       parser: isBisiCabVardiyaPdf(parsed.text) ? 'grid' : 'text',

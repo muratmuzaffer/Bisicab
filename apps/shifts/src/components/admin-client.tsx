@@ -58,6 +58,9 @@ export function AdminClient() {
       if (!res.ok) throw new Error(json.error ?? 'PDF okunamadı');
       if (json.year) setYear(json.year);
       if (json.month) setMonth(json.month);
+      if (json.year && json.month) {
+        setTitle(`${formatMonthYear(json.year, json.month)} Vardiya Çizelgesi`);
+      }
       setParsedRows(json.rows ?? []);
       const monthLabel = json.month ? formatMonthYear(json.year, json.month) : '';
       const dupNote =
@@ -65,7 +68,9 @@ export function AdminClient() {
       setMessage(
         `${json.rows?.length ?? 0} vardiya, ${json.driverCount ?? 0} sürücü PDF'den çıkarıldı` +
           dupNote +
-          (json.detectedFromPdf && monthLabel ? ` (${monthLabel} otomatik algılandı)` : '') +
+          (json.detectedFromPdf && monthLabel
+            ? ` (${monthLabel} otomatik algılandı${json.detectedSource === 'filename' ? ', dosya adından' : ''})`
+            : '') +
           '. Kontrol edip yayınlayın.'
       );
     } catch (err) {

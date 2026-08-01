@@ -45,20 +45,19 @@ export async function POST(request: Request) {
     pdfFilename = pdfFile.name;
   }
 
-  const saved = await saveLocalSchedule(
-    year,
-    month,
-    title,
-    uniqueEntries,
-    published,
-    pdfBuffer,
-    pdfFilename
-  );
+  let savedLocal = false;
+  if (!process.env.VERCEL) {
+    await saveLocalSchedule(year, month, title, uniqueEntries, published, pdfBuffer, pdfFilename);
+    savedLocal = true;
+  }
+
+  let storage: 'supabase' | 'local' = savedLocal ? 'local' : 'supabase';
+  let supabaseError: string | null = null;
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = getServiceClient();
-      let pdfUrl: string | null = saved.month.pdfUrl;
+      let pdfUrl: string | null = null;
 
       if (pdfBuffer && pdfFilename) {
         const storagePath = `${year}/${month}/${Date.now()}-${pdfFilename}`;
@@ -66,24 +65,28 @@ export async function POST(request: Request) {
           .from('shift-schedules')
           .upload(storagePath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
 
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from('shift-schedules').getPublicUrl(storagePath);
-          pdfUrl = urlData.publicUrl;
+        if (uploadError) {
+          throw new Error(`PDF yüklenemedi: ${uploadError.message}`);
         }
+
+        const { data: urlData } = supabase.storage.from('shift-schedules').getPublicUrl(storagePath);
+        pdfUrl = urlData.publicUrl;
       }
 
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('shift_schedule_months')
         .select('id')
         .eq('year', year)
         .eq('month', month)
         .maybeSingle();
 
+      if (existingError) throw new Error(existingError.message);
+
       let monthId: string;
 
       if (existing) {
         monthId = existing.id;
-        await supabase
+        const { error: updateError } = await supabase
           .from('shift_schedule_months')
           .update({
             title: title || `${year}-${month} Vardiya`,
@@ -94,7 +97,14 @@ export async function POST(request: Request) {
           })
           .eq('id', monthId);
 
-        await supabase.from('shift_schedule_entries').delete().eq('schedule_month_id', monthId);
+        if (updateError) throw new Error(updateError.message);
+
+        const { error: deleteError } = await supabase
+          .from('shift_schedule_entries')
+          .delete()
+          .eq('schedule_month_id', monthId);
+
+        if (deleteError) throw new Error(deleteError.message);
       } else {
         const { data: inserted, error } = await supabase
           .from('shift_schedule_months')
@@ -110,14 +120,14 @@ export async function POST(request: Request) {
           .single();
 
         if (error || !inserted) {
-          throw new Error(error?.message ?? 'Insert failed');
+          throw new Error(error?.message ?? 'Ay kaydı oluşturulamadı');
         }
         monthId = inserted.id;
       }
 
       if (uniqueEntries.length > 0) {
         const rows = uniqueEntries.map((e: ParsedShiftRow) => ({
-          schedule_month_id: monthId!,
+          schedule_month_id: monthId,
           driver_name: e.driverName,
           shift_date: e.shiftDate,
           start_time: e.startTime ?? null,
@@ -126,11 +136,22 @@ export async function POST(request: Request) {
           slot_label: e.slotLabel ?? (e.durationHours === 4 ? '4s' : '8s'),
         }));
 
-        await supabase.from('shift_schedule_entries').insert(rows);
+        const { error: insertError } = await supabase.from('shift_schedule_entries').insert(rows);
+        if (insertError) throw new Error(insertError.message);
       }
-    } catch {
-      /* Supabase opsiyonel — yerel kayıt zaten yapıldı */
+
+      storage = 'supabase';
+    } catch (err) {
+      supabaseError = err instanceof Error ? err.message : 'Supabase kayıt hatası';
+      if (process.env.VERCEL || !savedLocal) {
+        return NextResponse.json({ error: supabaseError }, { status: 500 });
+      }
     }
+  } else if (process.env.VERCEL) {
+    return NextResponse.json(
+      { error: 'Supabase yapılandırılmamış. Vercel üzerinde yayın için Supabase gerekli.' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
@@ -139,8 +160,9 @@ export async function POST(request: Request) {
     removedDuplicates,
     year,
     month,
-    storage: 'local',
-    message: `${year}-${String(month).padStart(2, '0')} çizelgesi kaydedildi.`,
+    storage,
+    supabaseError,
+    message: `${year}-${String(month).padStart(2, '0')} çizelgesi kaydedildi (${storage}).`,
   });
 }
 

@@ -2,8 +2,23 @@ import type { ParsedShiftRow } from './types';
 
 const SLOT_TIMES: Record<string, { start: string; end: string; hours: 4 | 8 }> = {
   F1: { start: '16:30', end: '20:30', hours: 4 },
+  F: { start: '16:30', end: '20:30', hours: 4 },
   B1: { start: '12:30', end: '20:30', hours: 8 },
+  B: { start: '12:30', end: '20:30', hours: 8 },
+  S1: { start: '12:30', end: '20:30', hours: 8 },
+  S: { start: '12:30', end: '20:30', hours: 8 },
+  D: { start: '12:30', end: '20:30', hours: 8 },
+  O: { start: '16:30', end: '20:30', hours: 4 },
 };
+
+const SLOT_TOKEN = /^[FB]\d+$|^S1$|^S\*?$|^D$|^O$|^B\*?$/;
+
+function slotFromToken(token: string): { slot: string; hours: 4 | 8 } | null {
+  if (!SLOT_TOKEN.test(token)) return null;
+  const base = token.replace('*', '');
+  const hours = SLOT_TIMES[token]?.hours ?? SLOT_TIMES[base]?.hours ?? (token.startsWith('B') || token.startsWith('S') || token === 'D' ? 8 : 4);
+  return { slot: token, hours };
+}
 
 interface TextItem {
   str: string;
@@ -74,6 +89,7 @@ export async function parseBisiCabPdfWithPositions(
         i.x < 145 &&
         !/^[-–—]+$/.test(i.str) &&
         !/^\d{2,}s$/.test(i.str) &&
+        !/^[FBSDO]\*?\d?$/.test(i.str) &&
         !/^[FB]\d+$/.test(i.str) &&
         !/^(4|8)s$/.test(i.str) &&
         !/Vardiyasi|Toplam|GUNLUK/i.test(i.str)
@@ -97,10 +113,11 @@ export async function parseBisiCabPdfWithPositions(
         continue;
       }
 
-      if (/^[FB]\d+$/.test(item.str)) {
+      const slotInfo = slotFromToken(item.str);
+      if (slotInfo) {
         const cell = dayCells.get(day) ?? {};
-        cell.slot = item.str;
-        cell.hours = SLOT_TIMES[item.str]?.hours ?? (item.str.startsWith('B') ? 8 : 4);
+        cell.slot = slotInfo.slot;
+        cell.hours = slotInfo.hours;
         dayCells.set(day, cell);
         continue;
       }
@@ -114,7 +131,7 @@ export async function parseBisiCabPdfWithPositions(
 
     for (const [day, cell] of dayCells.entries()) {
       if (!cell.slot) continue;
-      const times = SLOT_TIMES[cell.slot];
+      const times = SLOT_TIMES[cell.slot] ?? SLOT_TIMES[cell.slot.replace('*', '')];
       const durationHours = cell.hours ?? times?.hours ?? 4;
       const shiftDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 

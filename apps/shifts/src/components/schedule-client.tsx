@@ -4,17 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeftRight,
-  Calendar,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
   FileText,
+  LayoutGrid,
   List,
   Search,
-  Star,
+  Sparkles,
   User,
+  Users,
   X,
 } from 'lucide-react';
+import { AppShell } from '@/components/app-shell';
 import type { ScheduleData, ShiftScheduleEntry, ViewMode } from '@/lib/types';
 import {
   cn,
@@ -109,6 +112,19 @@ export function ScheduleClient({
       .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate));
   }, [data, activeName]);
 
+  const stats = useMemo(() => {
+    if (!data) return null;
+    const shifts4 = data.entries.filter((e) => e.durationHours === 4).length;
+    const shifts8 = data.entries.filter((e) => e.durationHours === 8).length;
+    return {
+      drivers: driverNames.length,
+      total: data.entries.length,
+      shifts4,
+      shifts8,
+      mine: myShifts.length,
+    };
+  }, [data, driverNames.length, myShifts.length]);
+
   const saveMyName = (name: string) => {
     setSearch(name);
     setSavedName(name);
@@ -141,258 +157,302 @@ export function ScheduleClient({
     calendarCells.push({ day: d, date: toIsoDate(year, month, d) });
   }
 
-  return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-brand-dark text-white shadow-lg">
-        <div className="mx-auto max-w-6xl px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
-                <span className="text-brand">Bisi</span>Cab Vardiya
-              </h1>
-              <p className="text-xs text-soft/60 sm:text-sm">Sürücü mesai çizelgesi</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/degisim"
-                className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/20 sm:text-sm"
-              >
-                <ArrowLeftRight className="h-4 w-4" />
-                <span className="hidden sm:inline">Değişimler</span>
-              </Link>
-              <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => navigateMonth(-1)}
-                className="rounded-lg p-1.5 hover:bg-white/10"
-                aria-label="Önceki ay"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <span className="min-w-[120px] text-center text-sm font-semibold sm:min-w-[140px] sm:text-base">
-                {formatMonthYear(year, month)}
-              </span>
-              <button
-                type="button"
-                onClick={() => navigateMonth(1)}
-                className="rounded-lg p-1.5 hover:bg-white/10"
-                aria-label="Sonraki ay"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+  const monthNav = (
+    <div className="flex items-center rounded-xl bg-white/8 p-1">
+      <button
+        type="button"
+        onClick={() => navigateMonth(-1)}
+        className="rounded-lg p-2 text-white/80 transition hover:bg-white/12 hover:text-white"
+        aria-label="Önceki ay"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+      <span className="min-w-[7.5rem] px-2 text-center text-sm font-bold text-white">
+        {formatMonthYear(year, month)}
+      </span>
+      <button
+        type="button"
+        onClick={() => navigateMonth(1)}
+        className="rounded-lg p-2 text-white/80 transition hover:bg-white/12 hover:text-white"
+        aria-label="Sonraki ay"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+    </div>
+  );
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {/* Search */}
-        <section className="relative mb-6">
-          <div className="rounded-2xl border border-brand/20 bg-white p-4 shadow-search sm:p-6">
-            <label htmlFor="name-search" className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <User className="h-4 w-4" />
-              Adınızı yazın, vardiyalarınızı görün
-            </label>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                id="name-search"
-                type="search"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Örn: Ahmet Yılmaz"
-                className="w-full rounded-xl border border-border bg-canvas py-3.5 pl-12 pr-24 text-base font-medium outline-none ring-brand/30 transition focus:border-brand focus:ring-2"
-                autoComplete="off"
-              />
-              <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
+  return (
+    <AppShell
+      title={
+        <>
+          <span className="text-brand">Bisi</span>Cab Vardiya
+        </>
+      }
+      subtitle="Sürücü mesai çizelgesi"
+      nav={[
+        {
+          href: '/degisim',
+          label: 'Değişimler',
+          icon: <ArrowLeftRight className="h-4 w-4" />,
+        },
+      ]}
+      actions={monthNav}
+    >
+      {/* Hero search */}
+      <section className="animate-slide-up mb-8">
+        <div className="card overflow-hidden">
+          <div className="border-b border-border/50 bg-gradient-to-br from-brand/8 via-white to-shift4-light/30 px-5 py-6 sm:px-8 sm:py-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-md">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-dark">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Kişisel görünüm
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  Adınızı yazın,
+                  <br />
+                  <span className="text-muted-foreground">vardiyalarınızı görün</span>
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Takvimde sizin günleriniz vurgulanır; sadece kendi vardiyalarınızı listelemeniz de mümkün.
+                </p>
+              </div>
+
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  id="name-search"
+                  type="search"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Sürücü adı ara…"
+                  className="input-field pl-12 pr-12 shadow-inset"
+                  autoComplete="off"
+                />
                 {activeName && (
                   <button
                     type="button"
                     onClick={clearName}
-                    className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-muted"
                     aria-label="Temizle"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 )}
+
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-border bg-white py-1 shadow-elevated">
+                    {suggestions.map((name) => (
+                      <li key={name}>
+                        <button
+                          type="button"
+                          onMouseDown={() => saveMyName(name)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-muted"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-bold text-brand-dark">
+                            {name.charAt(0)}
+                          </span>
+                          <span className="font-medium">{name}</span>
+                          {savedName && namesMatch(name, savedName) && (
+                            <span className="ml-auto rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+                              Kayıtlı
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
-
-            {showSuggestions && suggestions.length > 0 && (
-              <ul className="absolute left-4 right-4 z-50 mt-1 max-h-60 overflow-auto rounded-xl border border-border bg-white py-1 shadow-card sm:left-6 sm:right-6">
-                {suggestions.map((name) => (
-                  <li key={name}>
-                    <button
-                      type="button"
-                      onClick={() => saveMyName(name)}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-canvas"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      {name}
-                      {savedName && namesMatch(name, savedName) && (
-                        <Star className="ml-auto h-3.5 w-3.5 fill-brand text-brand" />
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
-        </section>
 
-        {/* Legend */}
-        <div className="mb-6 flex flex-wrap items-center gap-4 text-sm">
-          <span className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-[2rem] items-center justify-center rounded-md bg-shift4-light px-2 text-xs font-bold text-shift4-dark">
-              4s
-            </span>
-            4 saatlik vardiya
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-[2rem] items-center justify-center rounded-md bg-shift8-light px-2 text-xs font-bold text-shift8-dark">
-              8s
-            </span>
-            8 saatlik vardiya
-          </span>
-        </div>
-
-        {loading && (
-          <div className="mb-6 rounded-xl bg-white p-8 text-center text-muted-foreground shadow-card">
-            Yükleniyor…
-          </div>
-        )}
-
-        {!loading && !data && (
-          <div className="rounded-2xl bg-white p-12 text-center shadow-card">
-            <Calendar className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
-            <h2 className="text-lg font-semibold">Bu ay için çizelge yok</h2>
-            <p className="mt-2 text-muted-foreground">
-              {formatMonthYear(year, month)} vardiya çizelgesi henüz yayınlanmadı.
-            </p>
-            {availableMonths.length > 0 && (
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {availableMonths.map(({ year: y, month: m }) => (
-                  <button
-                    key={`${y}-${m}`}
-                    type="button"
-                    onClick={() => loadMonth(y, m)}
-                    className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-dark hover:bg-brand-deep"
-                  >
-                    {formatMonthYear(y, m)}
-                  </button>
-                ))}
+          {/* Legend + stats */}
+          <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
+            <div className="flex flex-wrap gap-3">
+              <LegendChip hours={4} label="4 saat · F1 (16:30–20:30)" />
+              <LegendChip hours={8} label="8 saat · B1 (12:30–20:30)" />
+            </div>
+            {stats && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="stat-pill">
+                  <Users className="h-3.5 w-3.5" />
+                  {stats.drivers} sürücü
+                </span>
+                <span className="stat-pill">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  {stats.total} vardiya
+                </span>
+                {activeName && stats.mine > 0 && (
+                  <span className="stat-pill bg-brand/15 text-brand-dark">
+                    <User className="h-3.5 w-3.5" />
+                    {stats.mine} sizin
+                  </span>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
+      </section>
 
-        {!loading && data && (
-          <>
-            {/* My shifts highlight */}
-            {activeName && (
-              <section className="mb-6">
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                  <Star className="h-5 w-5 fill-brand text-brand" />
-                  {myShifts.length > 0
-                    ? `${activeName} — ${myShifts.length} vardiya`
-                    : `${activeName} — bu ay vardiya bulunamadı`}
-                </h2>
-                {myShifts.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {myShifts.map((shift) => (
-                      <ShiftCard key={shift.id} shift={shift} highlighted />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded-xl bg-white p-4 text-sm text-muted-foreground shadow-card">
-                    Farklı bir ay seçmeyi veya adınızı kontrol etmeyi deneyin.
-                  </p>
-                )}
-              </section>
-            )}
+      {loading && (
+        <div className="card flex items-center justify-center gap-3 p-12 text-muted-foreground">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          Çizelge yükleniyor…
+        </div>
+      )}
 
-            {/* View tabs */}
-            <div className="mb-4 flex gap-1 rounded-xl bg-white p-1 shadow-card">
-              {([
-                { id: 'calendar' as const, label: 'Takvim', icon: Calendar },
-                { id: 'list' as const, label: 'Liste', icon: List },
-                ...(data.month.pdfUrl
-                  ? [{ id: 'pdf' as const, label: 'PDF', icon: FileText }]
-                  : []),
-              ]).map(({ id, label, icon: Icon }) => (
+      {!loading && !data && (
+        <div className="card p-12 text-center animate-fade-in">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+            <CalendarDays className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <h2 className="text-xl font-bold">{formatMonthYear(year, month)} için çizelge yok</h2>
+          <p className="mx-auto mt-2 max-w-sm text-muted-foreground">
+            Bu ayın vardiya çizelgesi henüz yayınlanmadı. Başka bir ay seçebilirsiniz.
+          </p>
+          {availableMonths.length > 0 && (
+            <div className="mt-8 flex flex-wrap justify-center gap-2">
+              {availableMonths.map(({ year: y, month: m }) => (
                 <button
-                  key={id}
+                  key={`${y}-${m}`}
                   type="button"
-                  onClick={() => setView(id)}
-                  className={cn(
-                    'flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition',
-                    view === id
-                      ? 'bg-brand-dark text-brand'
-                      : 'text-muted-foreground hover:bg-canvas'
-                  )}
+                  onClick={() => loadMonth(y, m)}
+                  className="btn-primary"
                 >
-                  <Icon className="h-4 w-4" />
-                  {label}
+                  {formatMonthYear(y, m)}
                 </button>
               ))}
             </div>
+          )}
+        </div>
+      )}
 
-            {view === 'calendar' && (
-              <CalendarView
-                cells={calendarCells}
-                entriesByDate={entriesByDate}
-                activeName={activeName}
-              />
-            )}
-
-            {view === 'list' && (
-              <ListView entries={data.entries} activeName={activeName} />
-            )}
-
-            {view === 'pdf' && data.month.pdfUrl && (
-              <div className="overflow-hidden rounded-2xl bg-white shadow-card">
-                <div className="border-b border-border px-4 py-3">
-                  <a
-                    href={data.month.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-shift4-dark hover:underline"
-                  >
-                    PDF&apos;yi yeni sekmede aç →
-                  </a>
+      {!loading && data && (
+        <div className="animate-fade-in space-y-6">
+          {/* My shifts */}
+          {activeName && (
+            <section>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold">Sizin vardiyalarınız</h2>
+                  <p className="text-sm text-muted-foreground">{activeName}</p>
                 </div>
-                <iframe
-                  src={data.month.pdfUrl}
-                  title="Vardiya PDF"
-                  className="h-[70vh] w-full"
-                />
+                {myShifts.length > 0 && (
+                  <span className="rounded-full bg-brand/15 px-3 py-1 text-sm font-bold text-brand-dark">
+                    {myShifts.length} gün
+                  </span>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </main>
 
-      <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
-        BisiCab · İZULAŞ Alsancak Limanı – Konak Saat Kulesi
-      </footer>
-    </div>
+              {myShifts.length > 0 ? (
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
+                  {myShifts.map((shift) => (
+                    <div key={shift.id} className="min-w-[240px] sm:min-w-0">
+                      <ShiftCard shift={shift} highlighted />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="card border-dashed p-6 text-center text-sm text-muted-foreground">
+                  Bu ay için kayıtlı vardiya bulunamadı. Adınızı veya ayı kontrol edin.
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* View switcher */}
+          <div className="flex gap-1 rounded-2xl bg-white p-1.5 shadow-card">
+            {([
+              { id: 'calendar' as const, label: 'Takvim', icon: LayoutGrid },
+              { id: 'list' as const, label: 'Liste', icon: List },
+              ...(data.month.pdfUrl
+                ? [{ id: 'pdf' as const, label: 'PDF', icon: FileText }]
+                : []),
+            ]).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setView(id)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition',
+                  view === id
+                    ? 'bg-brand-dark text-brand shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {view === 'calendar' && (
+            <CalendarView
+              cells={calendarCells}
+              entriesByDate={entriesByDate}
+              activeName={activeName}
+            />
+          )}
+
+          {view === 'list' && (
+            <ListView entries={data.entries} activeName={activeName} />
+          )}
+
+          {view === 'pdf' && data.month.pdfUrl && (
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <p className="text-sm font-semibold">Orijinal PDF</p>
+                <a
+                  href={data.month.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-shift4-dark hover:underline"
+                >
+                  Yeni sekmede aç →
+                </a>
+              </div>
+              <iframe
+                src={data.month.pdfUrl}
+                title="Vardiya PDF"
+                className="h-[75vh] w-full bg-muted"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </AppShell>
   );
 }
 
-function ShiftBadge({ hours }: { hours: 4 | 8 }) {
+function LegendChip({ hours, label }: { hours: 4 | 8; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      <span
+        className={cn(
+          'inline-flex h-7 min-w-[2rem] items-center justify-center rounded-lg px-2 text-[11px] font-bold',
+          hours === 4 ? 'bg-shift4-muted text-shift4-dark' : 'bg-shift8-muted text-shift8-dark'
+        )}
+      >
+        {durationLabel(hours)}
+      </span>
+      {label}
+    </span>
+  );
+}
+
+function ShiftBadge({ hours, size = 'sm' }: { hours: 4 | 8; size?: 'sm' | 'md' }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none',
-        hours === 4
-          ? 'bg-shift4-light text-shift4-dark'
-          : 'bg-shift8-light text-shift8-dark'
+        'inline-flex items-center font-bold',
+        size === 'md' ? 'rounded-lg px-2.5 py-1 text-xs' : 'rounded-md px-2 py-0.5 text-[10px]',
+        hours === 4 ? 'bg-shift4-muted text-shift4-dark' : 'bg-shift8-muted text-shift8-dark'
       )}
     >
       {durationLabel(hours)}
@@ -408,35 +468,43 @@ function ShiftCard({
   highlighted?: boolean;
 }) {
   const today = isToday(shift.shiftDate);
+  const hours = shift.durationHours;
+
   return (
     <article
       className={cn(
-        'rounded-xl border p-4 transition',
-        highlighted
-          ? 'border-brand/40 bg-brand/5 shadow-search'
-          : 'border-border/60 bg-white shadow-card',
-        today && 'ring-2 ring-brand/50'
+        'card relative overflow-hidden p-5 transition hover:shadow-elevated',
+        highlighted && 'border-brand/30 ring-1 ring-brand/20',
+        today && 'ring-2 ring-brand/40'
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div
+        className={cn(
+          'absolute left-0 top-0 h-full w-1',
+          hours === 4 ? 'bg-shift4' : 'bg-shift8'
+        )}
+      />
+      <div className="flex items-start justify-between gap-3 pl-2">
         <div>
-          <p className="font-semibold">{formatDateTr(shift.shiftDate)}</p>
+          <p className="text-lg font-bold leading-tight">{formatDateTr(shift.shiftDate)}</p>
           {!highlighted && (
-            <p className="mt-0.5 text-sm text-muted-foreground">{shift.driverName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{shift.driverName}</p>
           )}
         </div>
-        <ShiftBadge hours={shift.durationHours} />
+        <ShiftBadge hours={hours} size="md" />
       </div>
       {(shift.startTime || shift.endTime) && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          {formatTime(shift.startTime)}
-          {shift.endTime && ` – ${formatTime(shift.endTime)}`}
-          <span className="text-xs">({durationDescription(shift.durationHours)})</span>
+        <p className="mt-3 flex items-center gap-2 pl-2 text-sm text-muted-foreground">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span className="font-medium text-foreground">
+            {formatTime(shift.startTime)}
+            {shift.endTime && ` – ${formatTime(shift.endTime)}`}
+          </span>
+          <span className="text-xs">({durationDescription(hours)})</span>
         </p>
       )}
       {today && (
-        <span className="mt-2 inline-block rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark">
+        <span className="mt-3 ml-2 inline-flex items-center rounded-full bg-brand px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark">
           Bugün
         </span>
       )}
@@ -454,12 +522,15 @@ function CalendarView({
   activeName: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-card">
-      <div className="grid grid-cols-7 border-b border-border bg-canvas">
-        {DAY_NAMES_TR.map((d) => (
+    <div className="card overflow-hidden">
+      <div className="grid grid-cols-7 border-b border-border bg-muted/60">
+        {DAY_NAMES_TR.map((d, i) => (
           <div
             key={d}
-            className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            className={cn(
+              'py-3 text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground',
+              (i === 0 || i === 6) && 'text-muted-foreground/70'
+            )}
           >
             {d}
           </div>
@@ -468,58 +539,82 @@ function CalendarView({
       <div className="grid grid-cols-7">
         {cells.map((cell, idx) => {
           if (!cell.day || !cell.date) {
-            return <div key={`empty-${idx}`} className="min-h-[100px] border-b border-r border-border/40 bg-canvas/50" />;
+            return (
+              <div
+                key={`empty-${idx}`}
+                className="min-h-[7rem] border-b border-r border-border/30 bg-canvas/80 sm:min-h-[8.5rem]"
+              />
+            );
           }
 
           const entries = entriesByDate.get(cell.date) ?? [];
           const today = isToday(cell.date);
           const hasMine = activeName && entries.some((e) => namesMatch(e.driverName, activeName));
+          const count4 = entries.filter((e) => e.durationHours === 4).length;
+          const count8 = entries.filter((e) => e.durationHours === 8).length;
 
           return (
             <div
               key={cell.date}
               className={cn(
-                'min-h-[100px] border-b border-r border-border/40 p-1.5 sm:p-2',
+                'group min-h-[7rem] border-b border-r border-border/30 p-2 transition sm:min-h-[8.5rem] sm:p-2.5',
                 today && 'bg-brand/5',
-                hasMine && 'bg-brand/10 ring-1 ring-inset ring-brand/30'
+                hasMine && 'bg-brand/8 ring-1 ring-inset ring-brand/25'
               )}
             >
-              <div className="mb-1 flex items-center justify-between">
+              <div className="mb-2 flex items-center justify-between">
                 <span
                   className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
-                    today ? 'bg-brand text-brand-dark' : 'text-foreground'
+                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
+                    today
+                      ? 'bg-brand text-brand-dark shadow-glow'
+                      : 'text-foreground group-hover:bg-muted'
                   )}
                 >
                   {cell.day}
                 </span>
                 {entries.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground">{entries.length}</span>
+                  <div className="flex gap-0.5">
+                    {count4 > 0 && (
+                      <span className="rounded bg-shift4-muted px-1 text-[9px] font-bold text-shift4-dark">
+                        {count4}
+                      </span>
+                    )}
+                    {count8 > 0 && (
+                      <span className="rounded bg-shift8-muted px-1 text-[9px] font-bold text-shift8-dark">
+                        {count8}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-              <div className="space-y-0.5">
-                {entries.slice(0, 3).map((e) => {
+
+              <div className="space-y-1">
+                {entries.slice(0, 4).map((e) => {
                   const isMine = activeName && namesMatch(e.driverName, activeName);
+                  const firstName = e.driverName.split(' ')[0];
                   return (
                     <div
                       key={e.id}
                       className={cn(
-                        'truncate rounded px-1 py-0.5 text-[10px] leading-tight sm:text-[11px]',
+                        'flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] leading-tight sm:text-[11px]',
                         e.durationHours === 4
                           ? 'bg-shift4-light text-shift4-dark'
                           : 'bg-shift8-light text-shift8-dark',
-                        isMine && 'font-bold ring-1 ring-brand-dark/30',
-                        !isMine && activeName && 'opacity-40'
+                        isMine && 'font-bold ring-1 ring-brand-dark/20',
+                        !isMine && activeName && 'opacity-35'
                       )}
-                      title={`${e.driverName} ${formatTime(e.startTime)}-${formatTime(e.endTime)}`}
+                      title={`${e.driverName} · ${formatTime(e.startTime)}–${formatTime(e.endTime)}`}
                     >
-                      <span className="font-bold">{durationLabel(e.durationHours)}</span>{' '}
-                      {isMine ? 'Sen' : e.driverName.split(' ')[0]}
+                      <span className="shrink-0 font-bold">{durationLabel(e.durationHours)}</span>
+                      <span className="truncate">{isMine ? 'Siz' : firstName}</span>
                     </div>
                   );
                 })}
-                {entries.length > 3 && (
-                  <p className="text-[10px] text-muted-foreground">+{entries.length - 3} daha</p>
+                {entries.length > 4 && (
+                  <p className="px-1 text-[10px] font-medium text-muted-foreground">
+                    +{entries.length - 4} kişi
+                  </p>
                 )}
               </div>
             </div>
@@ -547,47 +642,95 @@ function ListView({
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [entries]);
 
+  const filteredGroups = useMemo(() => {
+    if (!activeName) return grouped;
+    return grouped
+      .map(([date, dayEntries]) => [
+        date,
+        dayEntries.filter((e) => namesMatch(e.driverName, activeName)),
+      ] as const)
+      .filter(([, dayEntries]) => dayEntries.length > 0);
+  }, [grouped, activeName]);
+
+  const displayGroups = activeName ? filteredGroups : grouped;
+
   return (
     <div className="space-y-4">
-      {grouped.map(([date, dayEntries]) => (
-        <section key={date} className="rounded-2xl bg-white p-4 shadow-card sm:p-5">
-          <h3 className="mb-3 flex items-center gap-2 font-bold">
-            {formatDateTr(date)}
+      {activeName && filteredGroups.length === 0 && (
+        <div className="card border-dashed p-6 text-center text-sm text-muted-foreground">
+          {activeName} için bu ayda vardiya kaydı yok.
+        </div>
+      )}
+
+      {displayGroups.map(([date, dayEntries]) => (
+        <section key={date} className="card overflow-hidden">
+          <div
+            className={cn(
+              'flex items-center gap-3 border-b border-border px-5 py-4',
+              isToday(date) && 'bg-brand/5'
+            )}
+          >
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl text-center',
+                isToday(date) ? 'bg-brand text-brand-dark' : 'bg-muted'
+              )}
+            >
+              <span className="text-lg font-bold leading-none">
+                {new Date(date + 'T12:00:00').getDate()}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-bold">{formatDateTr(date)}</h3>
+              <p className="text-xs text-muted-foreground">
+                {dayEntries.length} sürücü ·{' '}
+                {dayEntries.filter((e) => e.durationHours === 4).length}×4s ·{' '}
+                {dayEntries.filter((e) => e.durationHours === 8).length}×8s
+              </p>
+            </div>
             {isToday(date) && (
-              <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+              <span className="ml-auto rounded-full bg-brand px-2.5 py-0.5 text-[10px] font-bold text-brand-dark">
                 BUGÜN
               </span>
             )}
-          </h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          </div>
+
+          <div className="divide-y divide-border/60">
             {dayEntries
               .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
               .map((e) => {
                 const isMine = activeName && namesMatch(e.driverName, activeName);
-                if (activeName && !isMine) return null;
                 return (
                   <div
                     key={e.id}
                     className={cn(
-                      'flex items-center justify-between rounded-xl border px-4 py-3',
-                      isMine ? 'border-brand/40 bg-brand/5' : 'border-border/60'
+                      'flex items-center gap-4 px-5 py-4 transition hover:bg-muted/40',
+                      isMine && 'bg-brand/5'
                     )}
                   >
-                    <div>
-                      <p className="font-medium">{e.driverName}</p>
-                      <p className="text-sm text-muted-foreground">
+                    <div
+                      className={cn(
+                        'h-10 w-1 shrink-0 rounded-full',
+                        e.durationHours === 4 ? 'bg-shift4' : 'bg-shift8'
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">
+                        {e.driverName}
+                        {isMine && (
+                          <span className="ml-2 text-xs font-bold text-brand-dark">(Siz)</span>
+                        )}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
                         {formatTime(e.startTime)}
                         {e.endTime && ` – ${formatTime(e.endTime)}`}
                       </p>
                     </div>
-                    <ShiftBadge hours={e.durationHours} />
+                    <ShiftBadge hours={e.durationHours} size="md" />
                   </div>
                 );
               })}
-            {activeName &&
-              dayEntries.every((e) => !namesMatch(e.driverName, activeName)) && (
-                <p className="text-sm text-muted-foreground">Vardiya yok</p>
-              )}
           </div>
         </section>
       ))}

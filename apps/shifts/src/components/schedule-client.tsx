@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   ArrowLeftRight,
   CalendarDays,
@@ -397,6 +396,9 @@ export function ScheduleClient({
               cells={calendarCells}
               entriesByDate={entriesByDate}
               activeName={activeName}
+              year={year}
+              month={month}
+              myShiftDates={myShifts.map((s) => s.shiftDate)}
             />
           )}
 
@@ -516,111 +518,292 @@ function CalendarView({
   cells,
   entriesByDate,
   activeName,
+  year,
+  month,
+  myShiftDates,
 }: {
   cells: Array<{ day: number | null; date: string | null }>;
   entriesByDate: Map<string, ShiftScheduleEntry[]>;
   activeName: string;
+  year: number;
+  month: number;
+  myShiftDates: string[];
 }) {
+  const pickDefaultDate = useCallback((): string | null => {
+    const now = new Date();
+    if (now.getFullYear() === year && now.getMonth() + 1 === month) {
+      const today = toIsoDate(year, month, now.getDate());
+      if ((entriesByDate.get(today)?.length ?? 0) > 0) return today;
+    }
+    if (activeName && myShiftDates.length > 0) return myShiftDates[0]!;
+    for (const cell of cells) {
+      if (cell.date && (entriesByDate.get(cell.date)?.length ?? 0) > 0) return cell.date;
+    }
+    return null;
+  }, [activeName, cells, entriesByDate, month, myShiftDates, year]);
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(pickDefaultDate);
+
+  useEffect(() => {
+    setSelectedDate(pickDefaultDate());
+  }, [pickDefaultDate]);
+
+  const selectedEntries = selectedDate ? entriesByDate.get(selectedDate) ?? [] : [];
+  const selectedDayNum = selectedDate
+    ? parseInt(selectedDate.split('-')[2]!, 10)
+    : null;
+
   return (
-    <div className="card overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-border bg-muted/60">
-        {DAY_NAMES_TR.map((d, i) => (
-          <div
-            key={d}
-            className={cn(
-              'py-3 text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground',
-              (i === 0 || i === 6) && 'text-muted-foreground/70'
-            )}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7">
-        {cells.map((cell, idx) => {
-          if (!cell.day || !cell.date) {
-            return (
-              <div
-                key={`empty-${idx}`}
-                className="min-h-[7rem] border-b border-r border-border/30 bg-canvas/80 sm:min-h-[8.5rem]"
-              />
-            );
-          }
-
-          const entries = entriesByDate.get(cell.date) ?? [];
-          const today = isToday(cell.date);
-          const hasMine = activeName && entries.some((e) => namesMatch(e.driverName, activeName));
-          const count4 = entries.filter((e) => e.durationHours === 4).length;
-          const count8 = entries.filter((e) => e.durationHours === 8).length;
-
-          return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start">
+      {/* Month grid */}
+      <div className="card overflow-hidden p-3 sm:p-4">
+        <div className="mb-3 grid grid-cols-7 gap-1">
+          {DAY_NAMES_TR.map((d, i) => (
             <div
-              key={cell.date}
+              key={d}
               className={cn(
-                'group min-h-[7rem] border-b border-r border-border/30 p-2 transition sm:min-h-[8.5rem] sm:p-2.5',
-                today && 'bg-brand/5',
-                hasMine && 'bg-brand/8 ring-1 ring-inset ring-brand/25'
+                'py-1 text-center text-[10px] font-bold uppercase tracking-wide sm:text-xs',
+                i === 0 ? 'text-shift4-dark/70' : i === 6 ? 'text-shift8-dark/70' : 'text-muted-foreground'
               )}
             >
-              <div className="mb-2 flex items-center justify-between">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+          {cells.map((cell, idx) => {
+            if (!cell.day || !cell.date) {
+              return <div key={`empty-${idx}`} className="aspect-square" aria-hidden />;
+            }
+
+            const entries = entriesByDate.get(cell.date) ?? [];
+            const today = isToday(cell.date);
+            const isSelected = selectedDate === cell.date;
+            const hasMine = activeName && entries.some((e) => namesMatch(e.driverName, activeName));
+            const count4 = entries.filter((e) => e.durationHours === 4).length;
+            const count8 = entries.filter((e) => e.durationHours === 8).length;
+            const dow = new Date(cell.date + 'T12:00:00').getDay();
+            const isWeekend = dow === 0 || dow === 6;
+
+            return (
+              <button
+                key={cell.date}
+                type="button"
+                onClick={() => setSelectedDate(cell.date)}
+                className={cn(
+                  'relative flex aspect-square flex-col items-center justify-start rounded-xl p-1 transition sm:rounded-2xl sm:p-1.5',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                  entries.length === 0
+                    ? 'bg-canvas/80 hover:bg-muted/60'
+                    : 'bg-white hover:bg-muted/30 shadow-sm',
+                  isWeekend && entries.length > 0 && 'bg-canvas/40',
+                  isSelected && 'ring-2 ring-brand-dark ring-offset-1',
+                  hasMine && !isSelected && 'bg-brand/10',
+                  today && !isSelected && 'ring-1 ring-brand/40'
+                )}
+              >
                 <span
                   className={cn(
-                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
-                    today
-                      ? 'bg-brand text-brand-dark shadow-glow'
-                      : 'text-foreground group-hover:bg-muted'
+                    'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold sm:h-7 sm:w-7 sm:text-sm',
+                    today && 'bg-brand text-brand-dark',
+                    isSelected && !today && 'bg-brand-dark text-brand',
+                    !today && !isSelected && 'text-foreground'
                   )}
                 >
                   {cell.day}
                 </span>
+
                 {entries.length > 0 && (
-                  <div className="flex gap-0.5">
-                    {count4 > 0 && (
-                      <span className="rounded bg-shift4-muted px-1 text-[9px] font-bold text-shift4-dark">
-                        {count4}
-                      </span>
-                    )}
-                    {count8 > 0 && (
-                      <span className="rounded bg-shift8-muted px-1 text-[9px] font-bold text-shift8-dark">
-                        {count8}
-                      </span>
-                    )}
+                  <div className="mt-auto flex w-full flex-col items-center gap-0.5 pb-0.5">
+                    <div className="flex items-center gap-0.5">
+                      {count4 > 0 && (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-shift4 sm:h-2 sm:w-2"
+                          title={`${count4}× 4 saat`}
+                        />
+                      )}
+                      {count8 > 0 && (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-shift8 sm:h-2 sm:w-2"
+                          title={`${count8}× 8 saat`}
+                        />
+                      )}
+                      {hasMine && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-dark sm:h-2 sm:w-2" title="Sizin vardiyanız" />
+                      )}
+                    </div>
+                    <span className="hidden text-[9px] font-semibold text-muted-foreground sm:block">
+                      {entries.length}
+                    </span>
                   </div>
                 )}
-              </div>
+              </button>
+            );
+          })}
+        </div>
 
-              <div className="space-y-1">
-                {entries.slice(0, 4).map((e) => {
-                  const isMine = activeName && namesMatch(e.driverName, activeName);
-                  const firstName = e.driverName.split(' ')[0];
-                  return (
-                    <div
-                      key={e.id}
-                      className={cn(
-                        'flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] leading-tight sm:text-[11px]',
-                        e.durationHours === 4
-                          ? 'bg-shift4-light text-shift4-dark'
-                          : 'bg-shift8-light text-shift8-dark',
-                        isMine && 'font-bold ring-1 ring-brand-dark/20',
-                        !isMine && activeName && 'opacity-35'
-                      )}
-                      title={`${e.driverName} · ${formatTime(e.startTime)}–${formatTime(e.endTime)}`}
-                    >
-                      <span className="shrink-0 font-bold">{durationLabel(e.durationHours)}</span>
-                      <span className="truncate">{isMine ? 'Siz' : firstName}</span>
-                    </div>
-                  );
-                })}
-                {entries.length > 4 && (
-                  <p className="px-1 text-[10px] font-medium text-muted-foreground">
-                    +{entries.length - 4} kişi
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-shift4" /> 4 saat
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-shift8" /> 8 saat
+          </span>
+          {activeName && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-brand-dark" /> Sizin gününüz
+            </span>
+          )}
+          <span className="ml-auto hidden sm:inline">Gün seçerek detayları görün</span>
+        </div>
+      </div>
+
+      {/* Day detail panel */}
+      <div className="card overflow-hidden lg:sticky lg:top-24">
+        {selectedDate && selectedDayNum ? (
+          <>
+            <div
+              className={cn(
+                'border-b border-border/60 px-4 py-4 sm:px-5',
+                isToday(selectedDate) ? 'bg-brand/10' : 'bg-muted/30'
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    'flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl',
+                    isToday(selectedDate) ? 'bg-brand text-brand-dark shadow-glow' : 'bg-white shadow-sm'
+                  )}
+                >
+                  <span className="text-2xl font-bold leading-none">{selectedDayNum}</span>
+                  <span className="mt-0.5 text-[10px] font-bold uppercase">
+                    {DAY_NAMES_TR[new Date(selectedDate + 'T12:00:00').getDay()]}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold leading-tight">{formatDateTr(selectedDate)}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedEntries.length === 0
+                      ? 'Bu gün vardiya yok'
+                      : `${selectedEntries.length} sürücü · ${selectedEntries.filter((e) => e.durationHours === 4).length}×4s · ${selectedEntries.filter((e) => e.durationHours === 8).length}×8s`}
                   </p>
-                )}
+                  {isToday(selectedDate) && (
+                    <span className="mt-2 inline-block rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+                      BUGÜN
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+
+            {selectedEntries.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                Bu tarihte kayıtlı vardiya bulunmuyor.
+              </p>
+            ) : (
+              <div className="max-h-[420px] overflow-y-auto p-3 sm:p-4">
+                <DayShiftGroups entries={selectedEntries} activeName={activeName} />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/30" />
+            <p className="font-medium">Bir gün seçin</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Takvimden bir güne dokunarak o günkü vardiyaları görün.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DayShiftGroups({
+  entries,
+  activeName,
+}: {
+  entries: ShiftScheduleEntry[];
+  activeName: string;
+}) {
+  const sorted = [...entries].sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
+  const group4 = sorted.filter((e) => e.durationHours === 4);
+  const group8 = sorted.filter((e) => e.durationHours === 8);
+
+  return (
+    <div className="space-y-4">
+      {group8.length > 0 && (
+        <ShiftTimeGroup label="8 saatlik vardiya" hours={8} entries={group8} activeName={activeName} />
+      )}
+      {group4.length > 0 && (
+        <ShiftTimeGroup label="4 saatlik vardiya" hours={4} entries={group4} activeName={activeName} />
+      )}
+    </div>
+  );
+}
+
+function ShiftTimeGroup({
+  label,
+  hours,
+  entries,
+  activeName,
+}: {
+  label: string;
+  hours: 4 | 8;
+  entries: ShiftScheduleEntry[];
+  activeName: string;
+}) {
+  const isBlue = hours === 4;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <span className={cn('h-2 w-2 rounded-full', isBlue ? 'bg-shift4' : 'bg-shift8')} />
+        <span className={cn('text-xs font-bold uppercase tracking-wide', isBlue ? 'text-shift4-dark' : 'text-shift8-dark')}>
+          {label}
+        </span>
+        <span className="text-xs text-muted-foreground">({entries.length})</span>
+      </div>
+      <ul className="space-y-2">
+        {entries.map((e) => {
+          const isMine = activeName && namesMatch(e.driverName, activeName);
+          return (
+            <li
+              key={e.id}
+              className={cn(
+                'flex items-center gap-3 rounded-xl border px-3 py-2.5 transition',
+                isMine
+                  ? 'border-brand/40 bg-brand/10 shadow-sm'
+                  : 'border-border/50 bg-white',
+                isBlue ? 'border-l-[3px] border-l-shift4' : 'border-l-[3px] border-l-shift8'
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
+                  isMine ? 'bg-brand text-brand-dark' : isBlue ? 'bg-shift4-light text-shift4-dark' : 'bg-shift8-light text-shift8-dark'
+                )}
+              >
+                {e.driverName.charAt(0)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  {e.driverName}
+                  {isMine && <span className="ml-1.5 text-xs font-bold text-brand-dark">· Siz</span>}
+                </p>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {formatTime(e.startTime)}
+                  {e.endTime && ` – ${formatTime(e.endTime)}`}
+                </p>
+              </div>
+              <ShiftBadge hours={hours} size="md" />
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }

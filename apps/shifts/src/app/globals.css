@@ -35,25 +35,46 @@
 
   /* Vardiya pazarı — mantar pano ve post-it ilanlar */
   .corkboard {
-    background-color: #c49a6a;
+    background-color: #bf9260;
     background-image:
-      radial-gradient(rgba(112, 71, 30, 0.32) 1px, transparent 1.7px),
-      radial-gradient(rgba(255, 236, 205, 0.28) 1px, transparent 1.7px),
-      radial-gradient(rgba(88, 54, 20, 0.18) 1.4px, transparent 2.4px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(60, 35, 12, 0.16));
-    background-size: 13px 13px, 19px 19px, 31px 31px, 100% 100%;
-    background-position: 0 0, 7px 9px, 15px 3px, 0 0;
+      radial-gradient(rgba(92, 56, 22, 0.5) 1.2px, transparent 1.9px),
+      radial-gradient(rgba(255, 240, 214, 0.4) 1.1px, transparent 1.8px),
+      radial-gradient(rgba(74, 44, 16, 0.28) 2.2px, transparent 3.2px),
+      radial-gradient(ellipse at 22% 16%, rgba(158, 110, 62, 0.5), transparent 55%),
+      radial-gradient(ellipse at 78% 74%, rgba(102, 64, 28, 0.42), transparent 60%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(58, 34, 12, 0.22));
+    background-size: 11px 11px, 16px 16px, 27px 27px, 100% 100%, 100% 100%, 100% 100%;
+    background-position: 0 0, 5px 8px, 13px 3px, 0 0, 0 0, 0 0;
     box-shadow:
-      inset 0 0 0 6px rgba(120, 76, 32, 0.55),
-      inset 0 0 42px rgba(60, 35, 12, 0.35);
+      inset 0 0 0 8px rgba(124, 79, 34, 0.85),
+      inset 0 0 0 11px rgba(74, 46, 18, 0.55),
+      inset 0 0 52px rgba(48, 28, 10, 0.45);
   }
 
   .postit {
-    @apply relative rounded-[2px] px-4 pb-4 pt-7 text-left transition-transform duration-200;
+    @apply relative rounded-[2px] px-4 pb-5 pt-8 text-left transition-transform duration-200;
     box-shadow:
-      0 12px 20px -12px rgba(38, 22, 6, 0.6),
-      0 2px 5px rgba(38, 22, 6, 0.18);
-    clip-path: polygon(0 0, 100% 0, 100% 94%, 94% 100%, 0 100%);
+      0 14px 22px -12px rgba(34, 20, 6, 0.65),
+      0 3px 6px rgba(34, 20, 6, 0.22);
+    clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+  }
+
+  /* Kıvrılan köşenin kestiği alanda metin kalmasın */
+  .postit-safe {
+    @apply pr-6;
+  }
+
+  /* Sağ alt köşede kıvrılmış kâğıt izlenimi */
+  .postit::after {
+    content: '';
+    @apply pointer-events-none absolute bottom-0 right-0 h-8 w-8;
+    background-image: linear-gradient(
+      135deg,
+      transparent 38%,
+      rgba(52, 34, 10, 0.34) 46%,
+      rgba(52, 34, 10, 0.14) 62%,
+      transparent 78%
+    );
   }
 
   .postit-yellow {
@@ -78,11 +99,14 @@
   }
 
   .pushpin {
-    @apply absolute left-1/2 top-1.5 h-3.5 w-3.5 -translate-x-1/2 rounded-full;
-    background-image: radial-gradient(circle at 32% 30%, #ff8a80, #c62828 62%, #7f1d1d);
+    @apply absolute left-1/2 top-2 h-[19px] w-[19px] -translate-x-1/2 rounded-full;
+    background-image:
+      radial-gradient(circle at 33% 27%, rgba(255, 255, 255, 0.95) 0 11%, transparent 12%),
+      radial-gradient(circle at 50% 44%, #ef5350 0%, #c62828 56%, #7f1d1d 100%);
     box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.4),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+      0 3px 4px rgba(34, 20, 6, 0.55),
+      0 0 0 1px rgba(110, 18, 18, 0.4),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.32);
   }
 
   .sold-stamp {

@@ -26,6 +26,7 @@ import type {
   ShiftScheduleEntry,
 } from '@/lib/types';
 import {
+  formatDateCompactTr,
   formatPrice,
   highestOffer,
   parsePriceInput,
@@ -517,19 +518,21 @@ function PostitCard({
         <p className="truncate text-[13px] font-black leading-tight sm:text-sm">
           {listing.sellerName}
         </p>
-        <p className="mt-1.5 text-[11px] font-semibold opacity-80 sm:text-xs">
-          {formatDateTr(listing.shiftDate)}
+        <p className="mt-1.5 truncate text-[11px] font-semibold leading-tight opacity-80 sm:text-xs">
+          {formatDateCompactTr(listing.shiftDate)}
         </p>
-        <p className="mt-0.5 truncate text-[11px] opacity-70 sm:text-xs">{shiftLabel(listing)}</p>
+        <p className="mt-0.5 truncate text-[11px] leading-tight opacity-70 sm:text-xs">
+          {shiftLabel(listing)}
+        </p>
 
         <p className="mt-3 text-lg font-black leading-none sm:text-xl">
           {formatPrice(listing.minPrice)}
         </p>
-        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide opacity-60">
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide opacity-60">
           taban fiyat
         </p>
 
-        <div className="mt-3 border-t border-black/10 pt-2 text-[11px] font-semibold opacity-80">
+        <div className="postit-safe mt-3 border-t border-black/10 pt-2 text-[11px] font-semibold leading-tight opacity-80">
           {best ? (
             <span className="flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
@@ -541,7 +544,9 @@ function PostitCard({
         </div>
 
         {listing.note && (
-          <p className="mt-2 line-clamp-2 text-[11px] italic opacity-70">{listing.note}</p>
+          <p className="postit-safe mt-2 line-clamp-2 text-[11px] italic leading-tight opacity-70">
+            {listing.note}
+          </p>
         )}
 
         {sold && (

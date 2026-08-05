@@ -4,7 +4,7 @@ import type {
   ShiftMarketOffer,
   ShiftScheduleEntry,
 } from './types';
-import { namesMatch } from './utils';
+import { DAY_NAMES_TR, MONTH_NAMES_TR, namesMatch } from './utils';
 
 export const POSTIT_TONES = ['yellow', 'pink', 'blue', 'green', 'orange'] as const;
 export type PostitTone = (typeof POSTIT_TONES)[number];
@@ -16,12 +16,18 @@ export function postitToneFor(id: string): PostitTone {
   return POSTIT_TONES[sum % POSTIT_TONES.length]!;
 }
 
-const TILT_STEPS = [-2.4, 1.6, -1.1, 2.2, -1.9, 0.9, 2.6, -0.6] as const;
+const TILT_STEPS = [-3.2, 2.1, -1.6, 3.4, -2.6, 1.3, 3.8, -0.9] as const;
 
 export function postitTiltFor(id: string): number {
   let sum = 0;
   for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i) * (i + 1);
   return TILT_STEPS[sum % TILT_STEPS.length]!;
+}
+
+/** Post-it üzerinde satır kaydırmayı azaltan kısa tarih: "17 Ağustos · Pzt". */
+export function formatDateCompactTr(isoDate: string): string {
+  const date = new Date(`${isoDate}T12:00:00`);
+  return `${date.getDate()} ${MONTH_NAMES_TR[date.getMonth()]} · ${DAY_NAMES_TR[date.getDay()]}`;
 }
 
 export function formatPrice(amount: number): string {

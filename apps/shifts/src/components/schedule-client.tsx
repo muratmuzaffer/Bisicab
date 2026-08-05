@@ -12,6 +12,7 @@ import {
   List,
   Search,
   Sparkles,
+  Store,
   User,
   Users,
   X,
@@ -189,6 +190,11 @@ export function ScheduleClient({
       }
       subtitle="Sürücü mesai çizelgesi"
       nav={[
+        {
+          href: '/pazar',
+          label: 'Pazar',
+          icon: <Store className="h-4 w-4" />,
+        },
         {
           href: '/degisim',
           label: 'Değişimler',

@@ -10,7 +10,6 @@ import {
   History,
   Loader2,
   MessageSquare,
-  Store,
   User,
 } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
@@ -102,11 +101,6 @@ export function SwapClient({ driverNames, initialSwaps, year, month }: SwapClien
           href: '/',
           label: 'Çizelge',
           icon: <Calendar className="h-4 w-4" />,
-        },
-        {
-          href: '/pazar',
-          label: 'Pazar',
-          icon: <Store className="h-4 w-4" />,
         },
       ]}
     >

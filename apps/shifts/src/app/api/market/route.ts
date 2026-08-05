@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createListing, fetchListings } from '@/lib/market-server';
 import { validateListingInput } from '@/lib/market-utils';
-import type { CreateListingInput } from '@/lib/types';
+import type { CreateListingInput } from '@/lib/market-types';
 
 export async function GET() {
   const listings = await fetchListings(100);

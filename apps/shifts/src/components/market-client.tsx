@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
-  ArrowLeftRight,
-  Calendar,
   CheckCircle2,
   Clock,
   Coins,
@@ -19,12 +17,12 @@ import {
   X,
 } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
+import styles from '@/components/market.module.css';
 import type {
-  ShiftDuration,
   ShiftMarketListing,
   ShiftMarketOffer,
-  ShiftScheduleEntry,
-} from '@/lib/types';
+} from '@/lib/market-types';
+import type { ShiftDuration, ShiftScheduleEntry } from '@/lib/types';
 import {
   formatDateCompactTr,
   formatPrice,
@@ -43,11 +41,11 @@ import { cn, formatDateTr, formatMonthYear, namesMatch } from '@/lib/utils';
 const NAME_STORAGE_KEY = 'bisicab-shift-name';
 
 const TONE_CLASS: Record<string, string> = {
-  yellow: 'postit-yellow',
-  pink: 'postit-pink',
-  blue: 'postit-blue',
-  green: 'postit-green',
-  orange: 'postit-orange',
+  yellow: styles.toneYellow!,
+  pink: styles.tonePink!,
+  blue: styles.toneBlue!,
+  green: styles.toneGreen!,
+  orange: styles.toneOrange!,
 };
 
 interface MarketClientProps {
@@ -135,18 +133,6 @@ export function MarketClient({
         </>
       }
       subtitle={`${formatMonthYear(year, month)} · ${openListings.length} açık ilan`}
-      nav={[
-        {
-          href: '/',
-          label: 'Çizelge',
-          icon: <Calendar className="h-4 w-4" />,
-        },
-        {
-          href: '/degisim',
-          label: 'Değişimler',
-          icon: <ArrowLeftRight className="h-4 w-4" />,
-        },
-      ]}
     >
       <div className="animate-slide-up space-y-6">
         <section className="card overflow-hidden">
@@ -206,7 +192,7 @@ export function MarketClient({
           </div>
         </section>
 
-        <section className="corkboard rounded-3xl p-4 sm:p-7">
+        <section className={cn(styles.corkboard, 'rounded-3xl p-4 sm:p-7')}>
           {boardListings.length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-white/40 bg-white/10 py-16 text-center">
               <p className="text-sm font-semibold text-white/90">Panoda henüz ilan yok.</p>
@@ -506,14 +492,15 @@ function PostitCard({
         onClick={onOpen}
         style={{ '--tilt': `${tilt}deg` } as CSSProperties}
         className={cn(
-          'postit w-full [transform:rotate(var(--tilt))]',
+          styles.postit,
+          'w-full [transform:rotate(var(--tilt))]',
           'hover:[transform:rotate(0deg)_translateY(-4px)]',
           'focus-visible:[transform:rotate(0deg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white',
           tone,
           sold && 'saturate-50'
         )}
       >
-        <span className="pushpin" aria-hidden />
+        <span className={styles.pushpin} aria-hidden />
 
         <p className="truncate text-[13px] font-black leading-tight sm:text-sm">
           {listing.sellerName}
@@ -532,7 +519,12 @@ function PostitCard({
           taban fiyat
         </p>
 
-        <div className="postit-safe mt-3 border-t border-black/10 pt-2 text-[11px] font-semibold leading-tight opacity-80">
+        <div
+          className={cn(
+            styles.postitSafe,
+            'mt-3 border-t border-black/10 pt-2 text-[11px] font-semibold leading-tight opacity-80'
+          )}
+        >
           {best ? (
             <span className="flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
@@ -544,13 +536,18 @@ function PostitCard({
         </div>
 
         {listing.note && (
-          <p className="postit-safe mt-2 line-clamp-2 text-[11px] italic leading-tight opacity-70">
+          <p
+            className={cn(
+              styles.postitSafe,
+              'mt-2 line-clamp-2 text-[11px] italic leading-tight opacity-70'
+            )}
+          >
             {listing.note}
           </p>
         )}
 
         {sold && (
-          <span className="sold-stamp" aria-hidden>
+          <span className={styles.soldStamp} aria-hidden>
             <span>Satıldı</span>
           </span>
         )}

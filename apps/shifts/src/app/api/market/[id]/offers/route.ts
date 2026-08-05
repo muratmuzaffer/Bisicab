@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createOffer } from '@/lib/market-server';
-import type { CreateOfferInput } from '@/lib/types';
+import type { CreateOfferInput } from '@/lib/market-types';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {

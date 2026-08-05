@@ -12,10 +12,10 @@ import type {
   CreateListingInput,
   CreateOfferInput,
   MarketListingStatus,
-  ShiftDuration,
   ShiftMarketListing,
   ShiftMarketOffer,
-} from './types';
+} from './market-types';
+import type { ShiftDuration } from './types';
 import { namesMatch } from './utils';
 
 const LISTINGS_TABLE = 'shift_market_listings';

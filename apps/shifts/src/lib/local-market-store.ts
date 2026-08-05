@@ -6,7 +6,7 @@ import type {
   CreateOfferInput,
   ShiftMarketListing,
   ShiftMarketOffer,
-} from './types';
+} from './market-types';
 
 const LISTINGS_FILE = path.join(process.cwd(), 'data', 'market.json');
 

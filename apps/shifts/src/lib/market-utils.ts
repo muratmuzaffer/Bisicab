@@ -1,9 +1,5 @@
-import type {
-  ShiftDuration,
-  ShiftMarketListing,
-  ShiftMarketOffer,
-  ShiftScheduleEntry,
-} from './types';
+import type { ShiftMarketListing, ShiftMarketOffer } from './market-types';
+import type { ShiftDuration, ShiftScheduleEntry } from './types';
 import { DAY_NAMES_TR, MONTH_NAMES_TR, namesMatch } from './utils';
 
 export const POSTIT_TONES = ['yellow', 'pink', 'blue', 'green', 'orange'] as const;

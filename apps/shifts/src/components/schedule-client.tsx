@@ -12,7 +12,6 @@ import {
   List,
   Search,
   Sparkles,
-  Store,
   User,
   Users,
   X,
@@ -194,11 +193,6 @@ export function ScheduleClient({
           href: '/degisim',
           label: 'Değişimler',
           icon: <ArrowLeftRight className="h-4 w-4" />,
-        },
-        {
-          href: '/pazar',
-          label: 'Pazar',
-          icon: <Store className="h-4 w-4" />,
         },
       ]}
       actions={monthNav}

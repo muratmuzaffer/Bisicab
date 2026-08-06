@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   CheckCircle2,
   FileUp,
@@ -9,9 +9,24 @@ import {
   Plus,
   Trash2,
   Upload,
+  Users,
+  XCircle,
 } from 'lucide-react';
-import type { ParsedShiftRow } from '@/lib/types';
-import { formatMonthYear, MONTH_NAMES_TR } from '@/lib/utils';
+import { formatPrice } from '@/lib/market-utils';
+import type { ParsedShiftRow, ShiftSwap } from '@/lib/types';
+import type { DriverVisit } from '@/lib/visit-types';
+import { isMarketSwap } from '@/lib/swap-utils';
+import { cn, formatDateTr, formatMonthYear, MONTH_NAMES_TR } from '@/lib/utils';
+
+function formatVisitWhen(iso: string): string {
+  return new Date(iso).toLocaleString('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export function AdminClient() {
   const [password, setPassword] = useState('');
@@ -26,6 +41,85 @@ export function AdminClient() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [cancelRequests, setCancelRequests] = useState<ShiftSwap[]>([]);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelActionId, setCancelActionId] = useState<string | null>(null);
+  const [visits, setVisits] = useState<DriverVisit[]>([]);
+  const [visitsLoading, setVisitsLoading] = useState(false);
+  const [visitsError, setVisitsError] = useState('');
+
+  const loadCancelRequests = useCallback(async () => {
+    setCancelLoading(true);
+    try {
+      const res = await fetch('/api/admin/swap-cancellations');
+      const json = (await res.json()) as { error?: string; requests?: ShiftSwap[] };
+      if (!res.ok) {
+        setError(json.error ?? 'İptal talepleri yüklenemedi');
+        setCancelRequests([]);
+        return;
+      }
+      setCancelRequests(json.requests ?? []);
+    } catch {
+      setError('İptal talepleri yüklenemedi');
+      setCancelRequests([]);
+    } finally {
+      setCancelLoading(false);
+    }
+  }, []);
+
+  const loadVisits = useCallback(async () => {
+    setVisitsLoading(true);
+    setVisitsError('');
+    try {
+      const res = await fetch('/api/admin/visits');
+      const json = (await res.json()) as { error?: string; visits?: DriverVisit[] };
+      if (!res.ok) {
+        setVisitsError(json.error ?? 'Girişler yüklenemedi');
+        setVisits([]);
+        return;
+      }
+      setVisits(json.visits ?? []);
+    } catch {
+      setVisitsError('Girişler yüklenemedi');
+      setVisits([]);
+    } finally {
+      setVisitsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authed) {
+      loadCancelRequests();
+      loadVisits();
+    }
+  }, [authed, loadCancelRequests, loadVisits]);
+
+  const handleCancelDecision = async (id: string, action: 'approve' | 'reject') => {
+    const label = action === 'approve' ? 'onaylamak' : 'reddetmek';
+    if (!window.confirm(`Bu iptal talebini ${label} istediğinize emin misiniz?`)) return;
+
+    setCancelActionId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/swap-cancellations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız');
+      setMessage(
+        action === 'approve'
+          ? 'Değişim iptal edildi, çizelge güncellenecek.'
+          : 'İptal talebi reddedildi.'
+      );
+      await loadCancelRequests();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'İşlem başarısız');
+    } finally {
+      setCancelActionId(null);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,6 +313,163 @@ export function AdminClient() {
         {error && (
           <div className="rounded-xl bg-red-50 px-4 py-3 text-danger">{error}</div>
         )}
+
+        <section className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-brand-dark" />
+              <h2 className="text-lg font-bold">Site girişleri</h2>
+            </div>
+            <button
+              type="button"
+              onClick={loadVisits}
+              disabled={visitsLoading}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-canvas disabled:opacity-50"
+            >
+              {visitsLoading ? 'Yükleniyor…' : 'Yenile'}
+            </button>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Sürücü isim seçip “Devam et” dediğinde kaydedilir. Son 150 giriş.
+          </p>
+          {visitsError && (
+            <p className="mb-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {visitsError}
+            </p>
+          )}
+          {visits.length === 0 && !visitsError ? (
+            <p className="text-sm text-muted-foreground">
+              {visitsLoading ? 'Yükleniyor…' : 'Henüz giriş kaydı yok.'}
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-canvas/80 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2.5">Sürücü</th>
+                    <th className="px-4 py-2.5">Giriş zamanı</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {visits.map((visit) => (
+                    <tr key={visit.id} className="hover:bg-canvas/40">
+                      <td className="px-4 py-2.5 font-semibold">{visit.driverName}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {formatVisitWhen(visit.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold">Değişim iptal talepleri</h2>
+            <button
+              type="button"
+              onClick={loadCancelRequests}
+              disabled={cancelLoading}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-canvas disabled:opacity-50"
+            >
+              {cancelLoading ? 'Yükleniyor…' : 'Yenile'}
+            </button>
+          </div>
+          {cancelRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Bekleyen iptal talebi yok.</p>
+          ) : (
+            <ul className="space-y-3">
+              {cancelRequests.map((swap) => (
+                <li
+                  key={swap.id}
+                  className={cn(
+                    'rounded-xl border p-4',
+                    isMarketSwap(swap)
+                      ? 'border-orange-300 bg-orange-50/70'
+                      : 'border-amber-200/80 bg-amber-50/50'
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">
+                        {isMarketSwap(swap) ? (
+                          <>
+                            <span className="mr-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                              Pazar
+                            </span>
+                            {swap.partnerName} → {swap.requesterName}
+                            {swap.soldPrice != null && (
+                              <span className="ml-2 text-sm font-bold text-orange-900">
+                                {formatPrice(swap.soldPrice)}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {swap.requesterName}
+                            {swap.requesterShifts.length > 0 && <> ↔ {swap.partnerName}</>}
+                            {swap.requesterShifts.length === 0 && (
+                              <span className="text-muted-foreground"> ← {swap.partnerName}</span>
+                            )}
+                          </>
+                        )}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Talep eden:{' '}
+                        <span className="font-medium text-foreground">
+                          {swap.cancelRequestedBy ?? '—'}
+                        </span>
+                        {swap.cancelRequestedAt && (
+                          <>
+                            {' '}
+                            ·{' '}
+                            {new Date(swap.cancelRequestedAt).toLocaleString('tr-TR', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </>
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {swap.partnerShifts.map((s) => formatDateTr(s.date)).join(', ')}
+                        {swap.requesterShifts.length > 0 &&
+                          ` · verilen: ${swap.requesterShifts.map((s) => formatDateTr(s.date)).join(', ')}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCancelDecision(swap.id, 'approve')}
+                        disabled={cancelActionId === swap.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-shift8 px-3 py-2 text-xs font-semibold text-white hover:bg-shift8-dark disabled:opacity-50"
+                      >
+                        {cancelActionId === swap.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        )}
+                        Onayla
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelDecision(swap.id, 'reject')}
+                        disabled={cancelActionId === swap.id}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-canvas disabled:opacity-50"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Reddet
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {/* Month selection */}
         <section className="rounded-2xl bg-white p-6 shadow-card">

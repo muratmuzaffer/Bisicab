@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
+import { DriverIdentityProvider } from '@/components/driver-identity';
 import './globals.css';
 
 const fontSans = Plus_Jakarta_Sans({
@@ -22,7 +23,9 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr" className={fontSans.variable}>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <DriverIdentityProvider>{children}</DriverIdentityProvider>
+      </body>
     </html>
   );
 }

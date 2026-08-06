@@ -1,4 +1,9 @@
 import type { ParsedShiftRow, ScheduleData, ShiftScheduleEntry, ShiftScheduleMonth } from './types';
+import {
+  buildSlotLabel,
+  resolveShiftTimes,
+  slotFromToken,
+} from './shift-styles';
 
 const DEMO_MONTH: ShiftScheduleMonth = {
   id: 'demo-month',
@@ -32,14 +37,6 @@ const MONTH_NAMES_TR_UNICODE = [
   'ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran',
   'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık',
 ];
-
-/** BisiCab vardiya slot saatleri (PDF özeti sayfasından). */
-const SLOT_TIMES: Record<string, { start: string; end: string; hours: 4 | 8 }> = {
-  F1: { start: '16:30', end: '20:30', hours: 4 },
-  F: { start: '16:00', end: '20:00', hours: 4 },
-  B1: { start: '12:30', end: '20:30', hours: 8 },
-  B: { start: '12:00', end: '20:00', hours: 8 },
-};
 
 function buildDemoEntries(): ShiftScheduleEntry[] {
   const entries: ShiftScheduleEntry[] = [];
@@ -186,26 +183,31 @@ function parseEmployeeBlock(
       continue;
     }
 
-    if (/^[FB]\d+$/.test(token)) {
-      const slot = token;
+    if (/^[FBSDO]\*?\d?$/.test(token) || /^S1$/.test(token)) {
+      const slotInfo = slotFromToken(token);
+      if (!slotInfo) {
+        day += 1;
+        continue;
+      }
+
       const next = tokens[i + 1];
-      let durationHours: 4 | 8 = SLOT_TIMES[slot]?.hours ?? 4;
+      let durationHours = slotInfo.hours;
 
       if (next && /^(4|8)s$/.test(next)) {
         durationHours = next.startsWith('8') ? 8 : 4;
         i += 1;
       }
 
-      const times = SLOT_TIMES[slot];
+      const times = resolveShiftTimes(slotInfo.slot, durationHours);
       const shiftDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
       rows.push({
         driverName,
         shiftDate,
-        startTime: times?.start,
-        endTime: times?.end,
+        startTime: times.start,
+        endTime: times.end,
         durationHours,
-        slotLabel: `${slot} ${durationHours}s`,
+        slotLabel: buildSlotLabel(slotInfo.slot, durationHours),
       });
 
       day += 1;

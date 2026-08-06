@@ -10,6 +10,12 @@
   ::selection {
     @apply bg-brand/30 text-foreground;
   }
+
+  @media (max-width: 767px) {
+    html {
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
 }
 
 @layer components {

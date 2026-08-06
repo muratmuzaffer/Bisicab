@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeftRight,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   FileText,
   LayoutGrid,
@@ -17,7 +14,17 @@ import {
   X,
 } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
+import { useDriverIdentity } from '@/components/driver-identity';
+import { MonthNavigator } from '@/components/month-navigator';
 import type { ScheduleData, ShiftScheduleEntry, ViewMode } from '@/lib/types';
+import {
+  getShiftVisualKind,
+  shiftAccentHex,
+  shiftKindLabel,
+  shiftKindShortLabel,
+  SHIFT_KIND_ORDER,
+  type ShiftVisualKind,
+} from '@/lib/shift-styles';
 import {
   cn,
   DAY_NAMES_TR,
@@ -32,8 +39,6 @@ import {
   toIsoDate,
 } from '@/lib/utils';
 
-const STORAGE_KEY = 'bisicab-shift-name';
-
 interface ScheduleClientProps {
   initialData: ScheduleData | null;
   availableMonths: Array<{ year: number; month: number }>;
@@ -47,22 +52,14 @@ export function ScheduleClient({
   initialYear,
   initialMonth,
 }: ScheduleClientProps) {
+  const { name: myName } = useDriverIdentity();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [savedName, setSavedName] = useState('');
   const [view, setView] = useState<ViewMode>('calendar');
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setSavedName(stored);
-      setSearch(stored);
-    }
-  }, []);
 
   const loadMonth = useCallback(async (y: number, m: number) => {
     setLoading(true);
@@ -97,12 +94,13 @@ export function ScheduleClient({
   }, [data]);
 
   const suggestions = useMemo(() => {
-    if (!search.trim()) return driverNames.slice(0, 8);
+    if (!search.trim()) return driverNames;
     const q = search.toLowerCase();
-    return driverNames.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+    return driverNames.filter((n) => n.toLowerCase().includes(q));
   }, [search, driverNames]);
 
-  const activeName = search.trim() || savedName;
+  /** Arama doluysa o sürücü; yoksa girişte seçilen isim. */
+  const activeName = search.trim() || myName;
 
   const myShifts = useMemo(() => {
     if (!data || !activeName) return [];
@@ -124,17 +122,13 @@ export function ScheduleClient({
     };
   }, [data, driverNames.length, myShifts.length]);
 
-  const saveMyName = (name: string) => {
+  const pickLookupName = (name: string) => {
     setSearch(name);
-    setSavedName(name);
-    localStorage.setItem(STORAGE_KEY, name);
     setShowSuggestions(false);
   };
 
-  const clearName = () => {
+  const clearLookup = () => {
     setSearch('');
-    setSavedName('');
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   const entriesByDate = useMemo(() => {
@@ -157,27 +151,11 @@ export function ScheduleClient({
   }
 
   const monthNav = (
-    <div className="flex items-center rounded-xl bg-white/8 p-1">
-      <button
-        type="button"
-        onClick={() => navigateMonth(-1)}
-        className="rounded-lg p-2 text-white/80 transition hover:bg-white/12 hover:text-white"
-        aria-label="Önceki ay"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <span className="min-w-[7.5rem] px-2 text-center text-sm font-bold text-white">
-        {formatMonthYear(year, month)}
-      </span>
-      <button
-        type="button"
-        onClick={() => navigateMonth(1)}
-        className="rounded-lg p-2 text-white/80 transition hover:bg-white/12 hover:text-white"
-        aria-label="Sonraki ay"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-    </div>
+    <MonthNavigator
+      label={formatMonthYear(year, month)}
+      onPrev={() => navigateMonth(-1)}
+      onNext={() => navigateMonth(1)}
+    />
   );
 
   return (
@@ -188,19 +166,12 @@ export function ScheduleClient({
         </>
       }
       subtitle="Sürücü mesai çizelgesi"
-      nav={[
-        {
-          href: '/degisim',
-          label: 'Değişimler',
-          icon: <ArrowLeftRight className="h-4 w-4" />,
-        },
-      ]}
       actions={monthNav}
     >
-      {/* Hero search */}
+      {/* Hero */}
       <section className="animate-slide-up mb-8">
-        <div className="card overflow-hidden">
-          <div className="border-b border-border/50 bg-gradient-to-br from-brand/8 via-white to-shift4-light/30 px-5 py-6 sm:px-8 sm:py-8">
+        <div className="card">
+          <div className="relative overflow-visible border-b border-border/50 bg-gradient-to-br from-brand/8 via-white to-shift4-light/30 px-5 py-6 sm:px-8 sm:py-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-md">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-dark">
@@ -208,16 +179,26 @@ export function ScheduleClient({
                   Kişisel görünüm
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Adınızı yazın,
-                  <br />
-                  <span className="text-muted-foreground">vardiyalarınızı görün</span>
+                  {myName ? (
+                    <>
+                      Merhaba {myName},
+                      <br />
+                      <span className="text-muted-foreground">vardiyaların burada</span>
+                    </>
+                  ) : (
+                    <>
+                      Vardiya çizelgesi
+                      <br />
+                      <span className="text-muted-foreground">günleriniz vurgulanır</span>
+                    </>
+                  )}
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Takvimde sizin günleriniz vurgulanır; sadece kendi vardiyalarınızı listelemeniz de mümkün.
+                  Takvimde sizin günleriniz vurgulanır. İsterseniz başka bir sürücüyü de arayabilirsiniz.
                 </p>
               </div>
 
-              <div className="relative w-full lg:max-w-md">
+              <div className="relative z-20 w-full lg:max-w-md">
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   id="name-search"
@@ -229,14 +210,14 @@ export function ScheduleClient({
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  placeholder="Sürücü adı ara…"
+                  placeholder="Başka sürücü ara…"
                   className="input-field pl-12 pr-12 shadow-inset"
                   autoComplete="off"
                 />
-                {activeName && (
+                {search && (
                   <button
                     type="button"
-                    onClick={clearName}
+                    onClick={clearLookup}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-muted"
                     aria-label="Temizle"
                   >
@@ -245,21 +226,21 @@ export function ScheduleClient({
                 )}
 
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-border bg-white py-1 shadow-elevated">
+                  <ul className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-white py-1 shadow-elevated">
                     {suggestions.map((name) => (
                       <li key={name}>
                         <button
                           type="button"
-                          onMouseDown={() => saveMyName(name)}
+                          onMouseDown={() => pickLookupName(name)}
                           className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-muted"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-bold text-brand-dark">
                             {name.charAt(0)}
                           </span>
                           <span className="font-medium">{name}</span>
-                          {savedName && namesMatch(name, savedName) && (
+                          {myName && namesMatch(name, myName) && (
                             <span className="ml-auto rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-dark">
-                              Kayıtlı
+                              Sen
                             </span>
                           )}
                         </button>
@@ -274,8 +255,14 @@ export function ScheduleClient({
           {/* Legend + stats */}
           <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
             <div className="flex flex-wrap gap-3">
-              <LegendChip hours={4} label="4 saat · F1 (16:30–20:30)" />
-              <LegendChip hours={8} label="8 saat · B1 (12:30–20:30)" />
+              <LegendChip kind="standard8" label="B1 · 12:30–20:30" />
+              <LegendChip kind="standard4" label="F1 · 16:30–20:30" />
+              <LegendChip kind="slotS" label="S · 08:00–16:00" />
+              <LegendChip kind="slotD" label="D · 09:30–17:30" />
+              <LegendChip kind="slotB" label="B · 12:00–16:00" />
+              <LegendChip kind="slotO" label="O · 13:30–17:30" />
+              <LegendChip kind="slotSStar" label="S* · Bayram" />
+              <LegendChip kind="slotBStar" label="B* · Bayram" />
             </div>
             {stats && (
               <div className="flex flex-wrap gap-2 text-xs">
@@ -432,32 +419,105 @@ export function ScheduleClient({
   );
 }
 
-function LegendChip({ hours, label }: { hours: 4 | 8; label: string }) {
+function legendClasses(kind: ShiftVisualKind): string {
+  switch (kind) {
+    case 'standard4':
+      return 'bg-shift4-muted text-shift4-dark';
+    case 'standard8':
+      return 'bg-shift8-muted text-shift8-dark';
+    case 'slotS':
+      return 'bg-shiftS-muted text-shiftS-dark';
+    case 'slotD':
+      return 'bg-shiftD-muted text-shiftD-dark';
+    case 'slotB':
+      return 'bg-shiftB-muted text-shiftB-dark';
+    case 'slotO':
+      return 'bg-shiftO-muted text-shiftO-dark';
+    case 'slotSStar':
+      return 'bg-shiftSStar-muted text-shiftSStar-dark';
+    case 'slotBStar':
+      return 'bg-shiftBStar-muted text-shiftBStar-dark';
+  }
+}
+
+function accentClasses(kind: ShiftVisualKind): string {
+  switch (kind) {
+    case 'standard4':
+      return 'bg-shift4';
+    case 'standard8':
+      return 'bg-shift8';
+    case 'slotS':
+      return 'bg-shiftS';
+    case 'slotD':
+      return 'bg-shiftD';
+    case 'slotB':
+      return 'bg-shiftB';
+    case 'slotO':
+      return 'bg-shiftO';
+    case 'slotSStar':
+      return 'bg-shiftSStar';
+    case 'slotBStar':
+      return 'bg-shiftBStar';
+  }
+}
+
+function surfaceClasses(kind: ShiftVisualKind, highlighted = false): string {
+  switch (kind) {
+    case 'standard4':
+      return highlighted ? 'border-shift4-muted bg-shift4-light/70' : 'border-shift4-muted/60 bg-shift4-light/40';
+    case 'standard8':
+      return highlighted ? 'border-shift8-muted bg-shift8-light/70' : 'border-shift8-muted/60 bg-shift8-light/40';
+    case 'slotS':
+      return highlighted ? 'border-shiftS-muted bg-shiftS-light/80' : 'border-shiftS-muted/60 bg-shiftS-light/50';
+    case 'slotD':
+      return highlighted ? 'border-shiftD-muted bg-shiftD-light/80' : 'border-shiftD-muted/60 bg-shiftD-light/50';
+    case 'slotB':
+      return highlighted ? 'border-shiftB-muted bg-shiftB-light/80' : 'border-shiftB-muted/60 bg-shiftB-light/50';
+    case 'slotO':
+      return highlighted ? 'border-shiftO-muted bg-shiftO-light/80' : 'border-shiftO-muted/60 bg-shiftO-light/50';
+    case 'slotSStar':
+      return highlighted ? 'border-shiftSStar-muted bg-shiftSStar-light/80' : 'border-shiftSStar-muted/60 bg-shiftSStar-light/50';
+    case 'slotBStar':
+      return highlighted ? 'border-shiftBStar-muted bg-shiftBStar-light/80' : 'border-shiftBStar-muted/60 bg-shiftBStar-light/50';
+  }
+}
+
+function LegendChip({ kind, label }: { kind: ShiftVisualKind; label: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
       <span
         className={cn(
           'inline-flex h-7 min-w-[2rem] items-center justify-center rounded-lg px-2 text-[11px] font-bold',
-          hours === 4 ? 'bg-shift4-muted text-shift4-dark' : 'bg-shift8-muted text-shift8-dark'
+          legendClasses(kind)
         )}
       >
-        {durationLabel(hours)}
+        {shiftKindShortLabel(kind)}
       </span>
       {label}
     </span>
   );
 }
 
-function ShiftBadge({ hours, size = 'sm' }: { hours: 4 | 8; size?: 'sm' | 'md' }) {
+function ShiftBadge({
+  entry,
+  size = 'sm',
+}: {
+  entry: Pick<ShiftScheduleEntry, 'durationHours' | 'slotLabel'>;
+  size?: 'sm' | 'md';
+}) {
+  const kind = getShiftVisualKind(entry.slotLabel, entry.durationHours);
+  const slotCode = entry.slotLabel?.split(' ')[0] ?? durationLabel(entry.durationHours);
+
   return (
     <span
       className={cn(
         'inline-flex items-center font-bold',
         size === 'md' ? 'rounded-lg px-2.5 py-1 text-xs' : 'rounded-md px-2 py-0.5 text-[10px]',
-        hours === 4 ? 'bg-shift4-muted text-shift4-dark' : 'bg-shift8-muted text-shift8-dark'
+        legendClasses(kind)
       )}
+      title={entry.slotLabel ?? shiftKindLabel(kind)}
     >
-      {durationLabel(hours)}
+      {slotCode}
     </span>
   );
 }
@@ -470,30 +530,29 @@ function ShiftCard({
   highlighted?: boolean;
 }) {
   const today = isToday(shift.shiftDate);
-  const hours = shift.durationHours;
+  const kind = getShiftVisualKind(shift.slotLabel, shift.durationHours);
 
   return (
     <article
       className={cn(
         'card relative overflow-hidden p-5 transition hover:shadow-elevated',
         highlighted && 'border-brand/30 ring-1 ring-brand/20',
-        today && 'ring-2 ring-brand/40'
+        today && 'ring-2 ring-brand/40',
+        surfaceClasses(kind, highlighted)
       )}
     >
-      <div
-        className={cn(
-          'absolute left-0 top-0 h-full w-1',
-          hours === 4 ? 'bg-shift4' : 'bg-shift8'
-        )}
-      />
+      <div className={cn('absolute left-0 top-0 h-full w-1', accentClasses(kind))} />
       <div className="flex items-start justify-between gap-3 pl-2">
         <div>
           <p className="text-lg font-bold leading-tight">{formatDateTr(shift.shiftDate)}</p>
           {!highlighted && (
             <p className="mt-1 text-sm text-muted-foreground">{shift.driverName}</p>
           )}
+          {shift.slotLabel && (
+            <p className="mt-0.5 text-xs font-medium text-muted-foreground">{shift.slotLabel}</p>
+          )}
         </div>
-        <ShiftBadge hours={hours} size="md" />
+        <ShiftBadge entry={shift} size="md" />
       </div>
       {(shift.startTime || shift.endTime) && (
         <p className="mt-3 flex items-center gap-2 pl-2 text-sm text-muted-foreground">
@@ -502,7 +561,7 @@ function ShiftCard({
             {formatTime(shift.startTime)}
             {shift.endTime && ` – ${formatTime(shift.endTime)}`}
           </span>
-          <span className="text-xs">({durationDescription(hours)})</span>
+          <span className="text-xs">({durationDescription(shift.durationHours)})</span>
         </p>
       )}
       {today && (
@@ -581,8 +640,15 @@ function CalendarView({
             const today = isToday(cell.date);
             const isSelected = selectedDate === cell.date;
             const hasMine = activeName && entries.some((e) => namesMatch(e.driverName, activeName));
-            const count4 = entries.filter((e) => e.durationHours === 4).length;
-            const count8 = entries.filter((e) => e.durationHours === 8).length;
+            const kindCounts = entries.reduce(
+              (acc, e) => {
+                const k = getShiftVisualKind(e.slotLabel, e.durationHours);
+                acc[k] = (acc[k] ?? 0) + 1;
+                return acc;
+              },
+              {} as Partial<Record<ShiftVisualKind, number>>
+            );
+            const dotKinds = SHIFT_KIND_ORDER.filter((k) => (kindCounts[k] ?? 0) > 0);
             const dow = new Date(cell.date + 'T12:00:00').getDay();
             const isWeekend = dow === 0 || dow === 6;
 
@@ -616,19 +682,14 @@ function CalendarView({
 
                 {entries.length > 0 && (
                   <div className="mt-auto flex w-full flex-col items-center gap-0.5 pb-0.5">
-                    <div className="flex items-center gap-0.5">
-                      {count4 > 0 && (
+                    <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
+                      {dotKinds.map((k) => (
                         <span
-                          className="h-1.5 w-1.5 rounded-full bg-shift4 sm:h-2 sm:w-2"
-                          title={`${count4}× 4 saat`}
+                          key={k}
+                          className={cn('h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2', accentClasses(k))}
+                          title={`${kindCounts[k]}× ${shiftKindShortLabel(k)}`}
                         />
-                      )}
-                      {count8 > 0 && (
-                        <span
-                          className="h-1.5 w-1.5 rounded-full bg-shift8 sm:h-2 sm:w-2"
-                          title={`${count8}× 8 saat`}
-                        />
-                      )}
+                      ))}
                       {hasMine && (
                         <span className="h-1.5 w-1.5 rounded-full bg-brand-dark sm:h-2 sm:w-2" title="Sizin vardiyanız" />
                       )}
@@ -643,13 +704,21 @@ function CalendarView({
           })}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-shift4" /> 4 saat
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-shift8" /> 8 saat
-          </span>
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+          {SHIFT_KIND_ORDER.map((k) => (
+            <span key={k} className="inline-flex items-center gap-1.5">
+              <span className={cn('h-2 w-2 rounded-full', accentClasses(k))} />
+              {shiftKindShortLabel(k)}
+              {k === 'standard8' && ' · B1'}
+              {k === 'standard4' && ' · F1'}
+              {k === 'slotS' && ' · 08:00–16:00'}
+              {k === 'slotD' && ' · 09:30–17:30'}
+              {k === 'slotB' && ' · 12:00–16:00'}
+              {k === 'slotO' && ' · 13:30–17:30'}
+              {k === 'slotSStar' && ' · Bayram'}
+              {k === 'slotBStar' && ' · Bayram'}
+            </span>
+          ))}
           {activeName && (
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-brand-dark" /> Sizin gününüz
@@ -683,11 +752,7 @@ function CalendarView({
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold leading-tight">{formatDateTr(selectedDate)}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {selectedEntries.length === 0
-                      ? 'Bu gün vardiya yok'
-                      : `${selectedEntries.length} sürücü · ${selectedEntries.filter((e) => e.durationHours === 4).length}×4s · ${selectedEntries.filter((e) => e.durationHours === 8).length}×8s`}
-                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{daySummary(selectedEntries)}</p>
                   {isToday(selectedDate) && (
                     <span className="mt-2 inline-block rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-dark">
                       BUGÜN
@@ -721,6 +786,24 @@ function CalendarView({
   );
 }
 
+function daySummary(entries: ShiftScheduleEntry[]): string {
+  if (entries.length === 0) return 'Bu gün vardiya yok';
+  const kinds = entries.reduce(
+    (acc, e) => {
+      const k = getShiftVisualKind(e.slotLabel, e.durationHours);
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    },
+    {} as Partial<Record<ShiftVisualKind, number>>
+  );
+  const parts: string[] = [`${entries.length} sürücü`];
+  for (const k of SHIFT_KIND_ORDER) {
+    const n = kinds[k];
+    if (n) parts.push(`${n}×${shiftKindShortLabel(k)}`);
+  }
+  return parts.join(' · ');
+}
+
 function DayShiftGroups({
   entries,
   activeName,
@@ -729,39 +812,58 @@ function DayShiftGroups({
   activeName: string;
 }) {
   const sorted = [...entries].sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
-  const group4 = sorted.filter((e) => e.durationHours === 4);
-  const group8 = sorted.filter((e) => e.durationHours === 8);
+
+  const groups = SHIFT_KIND_ORDER.map((kind) => ({ kind, entries: [] as ShiftScheduleEntry[] }));
+
+  for (const entry of sorted) {
+    const kind = getShiftVisualKind(entry.slotLabel, entry.durationHours);
+    groups.find((g) => g.kind === kind)!.entries.push(entry);
+  }
+
+  const groupLabels: Record<ShiftVisualKind, string> = {
+    slotSStar: 'S* · Bayram vardiyası',
+    slotBStar: 'B* · Bayram vardiyası',
+    slotS: 'S vardiyası · 08:00–16:00',
+    slotD: 'D vardiyası · 09:30–17:30',
+    slotB: 'B vardiyası · 12:00–16:00',
+    slotO: 'O vardiyası · 13:30–17:30',
+    standard8: 'B1 · 12:30–20:30',
+    standard4: 'F1 · 16:30–20:30',
+  };
 
   return (
     <div className="space-y-4">
-      {group8.length > 0 && (
-        <ShiftTimeGroup label="8 saatlik vardiya" hours={8} entries={group8} activeName={activeName} />
-      )}
-      {group4.length > 0 && (
-        <ShiftTimeGroup label="4 saatlik vardiya" hours={4} entries={group4} activeName={activeName} />
-      )}
+      {groups
+        .filter((g) => g.entries.length > 0)
+        .map((g) => (
+          <ShiftKindGroup
+            key={g.kind}
+            kind={g.kind}
+            label={groupLabels[g.kind]}
+            entries={g.entries}
+            activeName={activeName}
+          />
+        ))}
     </div>
   );
 }
 
-function ShiftTimeGroup({
+function ShiftKindGroup({
+  kind,
   label,
-  hours,
   entries,
   activeName,
 }: {
+  kind: ShiftVisualKind;
   label: string;
-  hours: 4 | 8;
   entries: ShiftScheduleEntry[];
   activeName: string;
 }) {
-  const isBlue = hours === 4;
-
   return (
     <div>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <span className={cn('h-2 w-2 rounded-full', isBlue ? 'bg-shift4' : 'bg-shift8')} />
-        <span className={cn('text-xs font-bold uppercase tracking-wide', isBlue ? 'text-shift4-dark' : 'text-shift8-dark')}>
+        <span className={cn('h-2 w-2 rounded-full', accentClasses(kind))} />
+        <span className={cn('text-xs font-bold uppercase tracking-wide', legendClasses(kind).split(' ').slice(1).join(' '))}>
           {label}
         </span>
         <span className="text-xs text-muted-foreground">({entries.length})</span>
@@ -773,17 +875,15 @@ function ShiftTimeGroup({
             <li
               key={e.id}
               className={cn(
-                'flex items-center gap-3 rounded-xl border px-3 py-2.5 transition',
-                isMine
-                  ? 'border-brand/40 bg-brand/10 shadow-sm'
-                  : 'border-border/50 bg-white',
-                isBlue ? 'border-l-[3px] border-l-shift4' : 'border-l-[3px] border-l-shift8'
+                'flex items-center gap-3 rounded-xl border border-l-[3px] px-3 py-2.5 transition',
+                isMine ? 'border-brand/40 bg-brand/10 shadow-sm' : 'border-border/50 bg-white'
               )}
+              style={{ borderLeftColor: shiftAccentHex(kind) }}
             >
               <span
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-                  isMine ? 'bg-brand text-brand-dark' : isBlue ? 'bg-shift4-light text-shift4-dark' : 'bg-shift8-light text-shift8-dark'
+                  isMine ? 'bg-brand text-brand-dark' : legendClasses(kind)
                 )}
               >
                 {e.driverName.charAt(0)}
@@ -797,9 +897,10 @@ function ShiftTimeGroup({
                   <Clock className="h-3 w-3" />
                   {formatTime(e.startTime)}
                   {e.endTime && ` – ${formatTime(e.endTime)}`}
+                  {e.slotLabel && <span className="ml-1 font-medium">· {e.slotLabel}</span>}
                 </p>
               </div>
-              <ShiftBadge hours={hours} size="md" />
+              <ShiftBadge entry={e} size="md" />
             </li>
           );
         })}
@@ -865,11 +966,7 @@ function ListView({
             </div>
             <div>
               <h3 className="font-bold">{formatDateTr(date)}</h3>
-              <p className="text-xs text-muted-foreground">
-                {dayEntries.length} sürücü ·{' '}
-                {dayEntries.filter((e) => e.durationHours === 4).length}×4s ·{' '}
-                {dayEntries.filter((e) => e.durationHours === 8).length}×8s
-              </p>
+              <p className="text-xs text-muted-foreground">{daySummary(dayEntries)}</p>
             </div>
             {isToday(date) && (
               <span className="ml-auto rounded-full bg-brand px-2.5 py-0.5 text-[10px] font-bold text-brand-dark">
@@ -883,6 +980,7 @@ function ListView({
               .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
               .map((e) => {
                 const isMine = activeName && namesMatch(e.driverName, activeName);
+                const kind = getShiftVisualKind(e.slotLabel, e.durationHours);
                 return (
                   <div
                     key={e.id}
@@ -891,12 +989,7 @@ function ListView({
                       isMine && 'bg-brand/5'
                     )}
                   >
-                    <div
-                      className={cn(
-                        'h-10 w-1 shrink-0 rounded-full',
-                        e.durationHours === 4 ? 'bg-shift4' : 'bg-shift8'
-                      )}
-                    />
+                    <div className={cn('h-10 w-1 shrink-0 rounded-full', accentClasses(kind))} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">
                         {e.driverName}
@@ -908,9 +1001,10 @@ function ListView({
                         <Clock className="h-3.5 w-3.5" />
                         {formatTime(e.startTime)}
                         {e.endTime && ` – ${formatTime(e.endTime)}`}
+                        {e.slotLabel && <span className="text-xs font-medium">· {e.slotLabel}</span>}
                       </p>
                     </div>
-                    <ShiftBadge hours={e.durationHours} size="md" />
+                    <ShiftBadge entry={e} size="md" />
                   </div>
                 );
               })}

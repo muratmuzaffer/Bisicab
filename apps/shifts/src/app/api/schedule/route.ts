@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchSchedule } from '@/lib/supabase-server';
+import { fetchScheduleWithSwaps } from '@/lib/supabase-server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,6 +10,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'year and month required' }, { status: 400 });
   }
 
-  const data = await fetchSchedule(year, month);
+  const data = await fetchScheduleWithSwaps(year, month);
   return NextResponse.json({ data });
 }

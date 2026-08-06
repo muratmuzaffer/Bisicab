@@ -21,6 +21,8 @@ export interface ShiftMarketListing {
   durationHours: ShiftDuration;
   /** Taban fiyat — teklifler bunun altında olamaz. */
   minPrice: number;
+  /** Satıcının IBAN’ı (ödeme için). */
+  iban: string | null;
   note: string | null;
   status: MarketListingStatus;
   soldToName: string | null;
@@ -37,6 +39,20 @@ export interface CreateListingInput {
   endTime?: string | null;
   durationHours?: ShiftDuration;
   minPrice: number;
+  iban?: string | null;
+  note?: string | null;
+}
+
+/** Satıcının açık ilanı güncellemesi. */
+export interface UpdateListingInput {
+  actorName: string;
+  shiftDate?: string;
+  slotLabel?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  durationHours?: ShiftDuration;
+  minPrice?: number;
+  iban?: string | null;
   note?: string | null;
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createListing, fetchListings } from '@/lib/market-server';
-import { validateListingInput } from '@/lib/market-utils';
+import { normalizeIban, validateListingInput } from '@/lib/market-utils';
 import type { CreateListingInput } from '@/lib/market-types';
 
 export async function GET() {
@@ -13,10 +13,13 @@ export async function POST(request: Request) {
     const body = (await request.json()) as CreateListingInput;
 
     const minPrice = Number(body.minPrice);
+    const iban = normalizeIban(body.iban);
     const validationError = validateListingInput({
       sellerName: body.sellerName ?? '',
       shiftDate: body.shiftDate ?? '',
+      startTime: body.startTime ?? null,
       minPrice: Number.isFinite(minPrice) ? minPrice : null,
+      iban,
     });
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
@@ -30,6 +33,7 @@ export async function POST(request: Request) {
       endTime: body.endTime ?? null,
       durationHours: body.durationHours === 4 ? 4 : 8,
       minPrice,
+      iban,
       note: body.note ?? null,
     });
 

@@ -1,5 +1,5 @@
 import { ScheduleClient } from '@/components/schedule-client';
-import { fetchAvailableMonths, fetchSchedule } from '@/lib/supabase-server';
+import { fetchAvailableMonths, fetchScheduleWithSwaps } from '@/lib/supabase-server';
 
 export default async function HomePage({
   searchParams,
@@ -34,7 +34,7 @@ export default async function HomePage({
     }
   }
 
-  const data = await fetchSchedule(year, month);
+  const data = await fetchScheduleWithSwaps(year, month);
 
   return (
     <ScheduleClient

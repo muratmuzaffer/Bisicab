@@ -7,6 +7,7 @@ import type {
   ShiftMarketListing,
   ShiftMarketOffer,
 } from './market-types';
+import { normalizeIban } from './market-utils';
 
 const LISTINGS_FILE = path.join(process.cwd(), 'data', 'market.json');
 
@@ -23,7 +24,11 @@ async function readAll(): Promise<ShiftMarketListing[]> {
   await ensureFile();
   const raw = await fs.readFile(LISTINGS_FILE, 'utf-8');
   const parsed = JSON.parse(raw) as ShiftMarketListing[];
-  return parsed.map((listing) => ({ ...listing, offers: listing.offers ?? [] }));
+  return parsed.map((listing) => ({
+    ...listing,
+    iban: normalizeIban(listing.iban) || null,
+    offers: listing.offers ?? [],
+  }));
 }
 
 async function writeAll(listings: ShiftMarketListing[]) {
@@ -51,6 +56,7 @@ export async function createLocalListing(
     endTime: input.endTime ?? null,
     durationHours: input.durationHours ?? 8,
     minPrice: input.minPrice,
+    iban: normalizeIban(input.iban) || null,
     note: input.note?.trim() || null,
     status: 'open',
     soldToName: null,
@@ -104,6 +110,50 @@ export async function updateLocalListingStatus(
   listings[index] = { ...listings[index]!, ...patch };
   await writeAll(listings);
   return listings[index]!;
+}
+
+export async function updateLocalListing(
+  listingId: string,
+  patch: Partial<
+    Pick<
+      ShiftMarketListing,
+      | 'shiftDate'
+      | 'slotLabel'
+      | 'startTime'
+      | 'endTime'
+      | 'durationHours'
+      | 'minPrice'
+      | 'iban'
+      | 'note'
+    >
+  >
+): Promise<ShiftMarketListing> {
+  const listings = await readAll();
+  const index = listings.findIndex((listing) => listing.id === listingId);
+  if (index < 0) throw new Error('İlan bulunamadı');
+
+  listings[index] = { ...listings[index]!, ...patch };
+  await writeAll(listings);
+  return listings[index]!;
+}
+
+export async function resolveLocalExpiredListings(
+  resolve: (listing: ShiftMarketListing) => Partial<
+    Pick<ShiftMarketListing, 'status' | 'soldToName' | 'soldPrice'>
+  > | null
+): Promise<ShiftMarketListing[]> {
+  const listings = await readAll();
+  let changed = false;
+
+  const next = listings.map((listing) => {
+    const patch = resolve(listing);
+    if (!patch) return listing;
+    changed = true;
+    return { ...listing, ...patch };
+  });
+
+  if (changed) await writeAll(next);
+  return next;
 }
 
 export async function deleteLocalListing(listingId: string): Promise<void> {

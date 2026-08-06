@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import type { ScheduleData, ShiftScheduleEntry, ShiftScheduleMonth } from './types';
 import { listLocalMonths, loadLocalSchedule } from './local-schedule-store';
 import { dedupeScheduleEntries } from './dedupe';
+import { normalizeShiftTimes } from './shift-styles';
+import { applySwapsToEntries, swapsForMonth } from './swap-utils';
 
 function mapMonth(row: Record<string, unknown>): ShiftScheduleMonth {
   return {
@@ -17,7 +19,7 @@ function mapMonth(row: Record<string, unknown>): ShiftScheduleMonth {
 }
 
 function mapEntry(row: Record<string, unknown>): ShiftScheduleEntry {
-  return {
+  return normalizeShiftTimes({
     id: row.id as string,
     scheduleMonthId: row.schedule_month_id as string,
     driverName: row.driver_name as string,
@@ -27,7 +29,7 @@ function mapEntry(row: Record<string, unknown>): ShiftScheduleEntry {
     durationHours: row.duration_hours as 4 | 8,
     slotLabel: (row.slot_label as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
-  };
+  });
 }
 
 export function createSupabaseServer() {
@@ -104,6 +106,36 @@ export async function fetchSchedule(year: number, month: number): Promise<Schedu
   }
 
   return null;
+}
+
+export async function fetchScheduleWithSwaps(
+  year: number,
+  month: number
+): Promise<ScheduleData | null> {
+  const schedule = await fetchSchedule(year, month);
+  if (!schedule) return null;
+
+  const { fetchSwaps } = await import('./swap-server');
+  const swaps = await fetchSwaps(200);
+  const monthSwaps = swapsForMonth(swaps, year, month);
+  let entries =
+    monthSwaps.length > 0
+      ? applySwapsToEntries(schedule.entries, monthSwaps)
+      : schedule.entries;
+
+  try {
+    const { fetchListings } = await import('./market-server');
+    const { applyMarketSalesToEntries, marketSalesForMonth } = await import('./market-utils');
+    const sales = marketSalesForMonth(await fetchListings(200), year, month);
+    if (sales.length > 0) {
+      entries = applyMarketSalesToEntries(entries, sales);
+    }
+  } catch {
+    /* pazar tabloları yoksa çizelge yine çalışsın */
+  }
+
+  if (entries === schedule.entries) return schedule;
+  return { ...schedule, entries };
 }
 
 export async function fetchAvailableMonths(): Promise<Array<{ year: number; month: number }>> {

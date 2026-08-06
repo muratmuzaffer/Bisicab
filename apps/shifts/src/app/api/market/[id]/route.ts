@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { acceptOffer, cancelListing } from '@/lib/market-server';
+import { acceptOffer, cancelListing, updateListingDetails } from '@/lib/market-server';
+import type { UpdateListingInput } from '@/lib/market-types';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -13,6 +14,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ listing });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Teklif kabul edilemedi';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const body = (await request.json()) as UpdateListingInput;
+
+    if (!body.actorName?.trim()) {
+      return NextResponse.json({ error: 'İlan sahibinin adı gerekli' }, { status: 400 });
+    }
+
+    const listing = await updateListingDetails(params.id, body);
+    return NextResponse.json({ listing });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'İlan güncellenemedi';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

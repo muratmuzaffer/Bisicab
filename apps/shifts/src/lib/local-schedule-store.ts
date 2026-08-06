@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { ParsedShiftRow, ScheduleData, ShiftScheduleMonth } from './types';
 import { dedupeParsedRows } from './dedupe';
+import { normalizeShiftTimes } from './shift-styles';
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'schedules');
 const PDF_DIR = path.join(process.cwd(), 'data', 'pdfs');
@@ -47,17 +48,19 @@ export async function saveLocalSchedule(
 
   const data: ScheduleData = {
     month: monthData,
-    entries: uniqueEntries.map((e, i) => ({
-      id: `local-${year}-${month}-${i}`,
-      scheduleMonthId: monthData.id,
-      driverName: e.driverName,
-      shiftDate: e.shiftDate,
-      startTime: e.startTime ?? null,
-      endTime: e.endTime ?? null,
-      durationHours: e.durationHours,
-      slotLabel: e.slotLabel ?? (e.durationHours === 4 ? '4s' : '8s'),
-      notes: null,
-    })),
+    entries: uniqueEntries.map((e, i) =>
+      normalizeShiftTimes({
+        id: `local-${year}-${month}-${i}`,
+        scheduleMonthId: monthData.id,
+        driverName: e.driverName,
+        shiftDate: e.shiftDate,
+        startTime: e.startTime ?? null,
+        endTime: e.endTime ?? null,
+        durationHours: e.durationHours,
+        slotLabel: e.slotLabel ?? (e.durationHours === 4 ? '4s' : '8s'),
+        notes: null,
+      })
+    ),
   };
 
   await fs.writeFile(schedulePath(year, month), JSON.stringify(data, null, 2), 'utf-8');
@@ -69,7 +72,10 @@ export async function loadLocalSchedule(year: number, month: number): Promise<Sc
     const raw = await fs.readFile(schedulePath(year, month), 'utf-8');
     const data = JSON.parse(raw) as ScheduleData;
     if (!data.month.published) return null;
-    return data;
+    return {
+      ...data,
+      entries: data.entries.map((e) => normalizeShiftTimes(e)),
+    };
   } catch {
     return null;
   }

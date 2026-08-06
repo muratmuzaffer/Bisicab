@@ -1,24 +1,9 @@
 import type { ParsedShiftRow } from './types';
-
-const SLOT_TIMES: Record<string, { start: string; end: string; hours: 4 | 8 }> = {
-  F1: { start: '16:30', end: '20:30', hours: 4 },
-  F: { start: '16:30', end: '20:30', hours: 4 },
-  B1: { start: '12:30', end: '20:30', hours: 8 },
-  B: { start: '12:30', end: '20:30', hours: 8 },
-  S1: { start: '12:30', end: '20:30', hours: 8 },
-  S: { start: '12:30', end: '20:30', hours: 8 },
-  D: { start: '12:30', end: '20:30', hours: 8 },
-  O: { start: '16:30', end: '20:30', hours: 4 },
-};
-
-const SLOT_TOKEN = /^[FB]\d+$|^S1$|^S\*?$|^D$|^O$|^B\*?$/;
-
-function slotFromToken(token: string): { slot: string; hours: 4 | 8 } | null {
-  if (!SLOT_TOKEN.test(token)) return null;
-  const base = token.replace('*', '');
-  const hours = SLOT_TIMES[token]?.hours ?? SLOT_TIMES[base]?.hours ?? (token.startsWith('B') || token.startsWith('S') || token === 'D' ? 8 : 4);
-  return { slot: token, hours };
-}
+import {
+  buildSlotLabel,
+  resolveShiftTimes,
+  slotFromToken,
+} from './shift-styles';
 
 interface TextItem {
   str: string;
@@ -117,7 +102,9 @@ export async function parseBisiCabPdfWithPositions(
       if (slotInfo) {
         const cell = dayCells.get(day) ?? {};
         cell.slot = slotInfo.slot;
-        cell.hours = slotInfo.hours;
+        if (cell.hours === undefined) {
+          cell.hours = slotInfo.hours;
+        }
         dayCells.set(day, cell);
         continue;
       }
@@ -131,17 +118,18 @@ export async function parseBisiCabPdfWithPositions(
 
     for (const [day, cell] of dayCells.entries()) {
       if (!cell.slot) continue;
-      const times = SLOT_TIMES[cell.slot] ?? SLOT_TIMES[cell.slot.replace('*', '')];
-      const durationHours = cell.hours ?? times?.hours ?? 4;
+      const durationHours =
+        cell.hours ?? slotFromToken(cell.slot)?.hours ?? 8;
+      const times = resolveShiftTimes(cell.slot, durationHours);
       const shiftDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
       rows.push({
         driverName,
         shiftDate,
-        startTime: times?.start,
-        endTime: times?.end,
+        startTime: times.start,
+        endTime: times.end,
         durationHours,
-        slotLabel: `${cell.slot} ${durationHours}s`,
+        slotLabel: buildSlotLabel(cell.slot, durationHours),
       });
     }
   }
